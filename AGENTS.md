@@ -11,8 +11,9 @@ The goal is to build a small tool that lets people store personal memories in QR
 - GitHub repository: https://github.com/Liuchenghaoshiwo/MemoryQR
 - Live preview: https://liuchenghaoshiwo.github.io/MemoryQR/
 - Deployment: GitHub Pages through `.github/workflows/pages.yml`
-- Runtime: zero-dependency static HTML/CSS/JavaScript
-- Tests: Node built-in test runner
+- Web runtime: zero-dependency static HTML/CSS/JavaScript
+- iOS runtime: SwiftUI app under `iOS/MemoryQR`
+- Tests: Node built-in test runner plus Xcode XCTest target
 
 ## Important Files
 
@@ -21,6 +22,11 @@ The goal is to build a small tool that lets people store personal memories in QR
 - `src/app.js` - browser-side demo behavior
 - `src/memoryPayload.js` - memory payload create/parse helpers
 - `test/memoryPayload.test.js` - payload contract tests
+- `iOS/MemoryQR/MemoryQR.xcodeproj` - native iOS Xcode project
+- `iOS/MemoryQR/MemoryQR/ContentView.swift` - SwiftUI memory entry, QR preview, and save flow
+- `iOS/MemoryQR/MemoryQR/MemoryPayload.swift` - Swift payload create/parse helpers
+- `iOS/MemoryQR/MemoryQR/QRCodeGenerator.swift` - Core Image QR rendering helper
+- `iOS/MemoryQR/MemoryQRTests/MemoryPayloadTests.swift` - iOS payload and QR tests
 - `README.md` - public-facing repository introduction
 - `.github/workflows/pages.yml` - GitHub Pages deployment workflow
 
@@ -39,21 +45,37 @@ Privacy matters. Prefer local-first behavior unless the user explicitly asks for
 
 Do not pretend the app is complete. The current version does not yet include:
 
-- real QR code generation
+- encrypted QR payloads
 - QR scanning
 - file or image attachment support
 - cloud storage
 - login or user accounts
+- real whitelist authorization
+
+The iOS app now generates real QR images, but the payload is still plain MemoryQR JSON. Any security language must be precise: authentication, whitelist checks, secure decoding, and encryption are planned, not complete.
 
 ## Next Good Tasks
 
 Recommended next implementation steps:
 
-1. Add real QR generation from the existing memory payload.
-2. Add a download button for the generated QR image.
-3. Add QR decode/scanning support.
-4. Improve README with screenshots once the real QR flow exists.
-5. Add more tests around payload size, empty fields, and invalid payloads.
+1. Design the secure payload format for encrypted MemoryQR QR codes.
+2. Choose an authentication and whitelist approach for authorized decoding.
+3. Add QR scanning support in the iOS app with AVFoundation.
+4. Add encrypted encode/decode tests around payload size, empty fields, and invalid payloads.
+5. Improve README with screenshots once the iOS flow is visually reviewed.
+
+## Latest Session Notes
+
+- Added native SwiftUI iOS MVP under `iOS/MemoryQR`.
+- Added Core Image QR generation, Swift payload create/parse helpers, QR preview, and save-to-Photos flow.
+- Added XCTest coverage for Swift payload behavior and QR generation.
+- Updated README with Xcode open/build/test instructions.
+- Verified `node --test test/*.test.js`.
+- Verified `xcodebuild build -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -destination 'generic/platform=iOS Simulator' -derivedDataPath /private/tmp/MemoryQR-xcode`.
+- Verified `xcodebuild test -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' -derivedDataPath /private/tmp/MemoryQR-xcode`.
+- Build note: use `/private/tmp` for Xcode DerivedData because the repository lives in `Documents`, where File Provider/Finder metadata can make codesign reject simulator products.
+- Still incomplete: authentication, login, whitelist authorization, encrypted payloads, secure decoding, QR scanning, and real app icon assets.
+- Best next task: design and implement the secure encrypted payload plus authorized decode boundary before adding public sharing.
 
 ## Session Handoff Rule
 
@@ -74,4 +96,10 @@ Before claiming work is complete, run:
 
 ```bash
 node --test test/*.test.js
+```
+
+For iOS changes, also run:
+
+```bash
+xcodebuild test -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' -derivedDataPath /private/tmp/MemoryQR-xcode
 ```
