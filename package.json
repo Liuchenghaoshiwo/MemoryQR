@@ -1,0 +1,19 @@
+{
+  "name": "memoryqr",
+  "version": "0.1.0",
+  "description": "A tiny tool concept for storing memories inside QR codes.",
+  "type": "module",
+  "private": false,
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "serve": "python3 -m http.server 4173"
+  },
+  "keywords": [
+    "memory",
+    "qr-code",
+    "static-site",
+    "prototype"
+  ],
+  "author": "Chenghao Liu",
+  "license": "MIT"
+}

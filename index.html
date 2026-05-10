@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="MemoryQR is an early prototype for storing memories inside QR codes."
+    />
+    <title>MemoryQR</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+    <script type="module" src="./src/app.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <div class="shell">
+        <header class="topbar" aria-label="MemoryQR navigation">
+          <div class="brand" aria-label="MemoryQR">
+            <span class="brand-mark" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </span>
+            <span>MemoryQR</span>
+          </div>
+          <a class="nav-link" href="https://github.com/Liuchenghaoshiwo/MemoryQR">GitHub</a>
+        </header>
+
+        <section class="hero" aria-labelledby="hero-title">
+          <div>
+            <p class="eyebrow">Early prototype</p>
+            <h1 id="hero-title">MemoryQR</h1>
+            <p class="intro">
+              A tiny tool concept for turning personal memories into compact QR
+              payloads that can be saved, shared, and rediscovered later.
+            </p>
+            <div class="actions" aria-label="Project actions">
+              <a class="button primary" href="#demo">Open demo</a>
+              <a class="button secondary" href="https://github.com/Liuchenghaoshiwo/MemoryQR">
+                View source
+              </a>
+            </div>
+          </div>
+
+          <aside class="preview" aria-label="MemoryQR concept preview">
+            <div class="qr-frame" aria-hidden="true">
+              <div class="qr-grid">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <h2>Memories as portable codes</h2>
+            <p>
+              This placeholder version defines the project direction and a
+              starter payload format for future QR generation.
+            </p>
+          </aside>
+        </section>
+
+        <section class="workspace" id="demo" aria-labelledby="demo-title">
+          <form class="composer" data-memory-form>
+            <h2 class="section-title" id="demo-title">Memory draft</h2>
+            <label class="field">
+              <span>Title</span>
+              <input aria-label="Title" data-title-input value="First concert" maxlength="80" />
+            </label>
+            <label class="field">
+              <span>Memory</span>
+              <textarea aria-label="Memory" data-message-input maxlength="420">A song I never wanted to forget.</textarea>
+            </label>
+            <p class="status" data-status-text></p>
+          </form>
+
+          <section class="payload" aria-labelledby="payload-title">
+            <h2 class="section-title" id="payload-title">Payload preview</h2>
+            <pre data-payload-output></pre>
+          </section>
+        </section>
+
+        <section class="steps" aria-label="Future workflow">
+          <article class="step">
+            <span class="step-number">1</span>
+            <h2 class="section-title">Write</h2>
+            <p>Capture a small memory with a title, message, and timestamp.</p>
+          </article>
+          <article class="step">
+            <span class="step-number">2</span>
+            <h2 class="section-title">Encode</h2>
+            <p>Turn the memory payload into a scannable QR code.</p>
+          </article>
+          <article class="step">
+            <span class="step-number">3</span>
+            <h2 class="section-title">Rediscover</h2>
+            <p>Scan the QR code later and read the memory in its original form.</p>
+          </article>
+        </section>
+
+        <footer class="footer">
+          <span>MemoryQR is an open-source early prototype.</span>
+          <a class="nav-link" href="https://github.com/Liuchenghaoshiwo/MemoryQR">Star on GitHub</a>
+        </footer>
+      </div>
+    </main>
+  </body>
+</html>
