@@ -55,6 +55,17 @@ Recommended next implementation steps:
 4. Improve README with screenshots once the real QR flow exists.
 5. Add more tests around payload size, empty fields, and invalid payloads.
 
+## Session Handoff Rule
+
+Every future Codex session should start by reading this file. After finishing any meaningful change, update this file before the final response so the next session knows:
+
+- what changed
+- what was verified
+- what is still incomplete
+- the best next task
+
+Keep this document concise. Move detailed implementation notes into `docs/` if they become too long.
+
 ## Development Notes
 
 Use the existing lightweight static structure unless the requested feature clearly needs a framework. Keep the public repo clean and easy to understand for visitors who may want to star, fork, or learn from it.
