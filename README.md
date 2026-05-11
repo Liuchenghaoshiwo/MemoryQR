@@ -17,14 +17,16 @@ The app is designed to run as a static site and deploy through GitHub Pages.
 - SwiftUI iOS app shell under `iOS/MemoryQR`
 - Native QR generation with Apple's Core Image `CIQRCodeGenerator`
 - Save generated QR images to Photos from the iOS app
+- Camera QR scanning with AVFoundation
+- QR image import and parsing from Photos
 
-The iOS QR payload is not encrypted yet. Authentication, whitelist checks, secure decoding, and scanning are planned next steps.
+The iOS QR payload is not encrypted yet. Authentication, whitelist checks, secure decoding, and media attachments are planned next steps.
 
 ## Roadmap
 
 - Generate real QR codes from memory payloads
-- Scan and decode MemoryQR payloads
 - Add authentication, whitelist authorization, and encrypted payload support
+- Add secure attachment support for photos, audio, and video
 - Add export and download options
 - Explore local-first storage for private memories
 

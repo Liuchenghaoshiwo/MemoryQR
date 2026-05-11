@@ -2,6 +2,16 @@ import Photos
 import SwiftUI
 
 struct ContentView: View {
+    private enum Mode: String, CaseIterable, Identifiable {
+        case create = "Create"
+        case scan = "Scan"
+
+        var id: String {
+            rawValue
+        }
+    }
+
+    @State private var selectedMode = Mode.create
     @State private var title = "Beach day"
     @State private var message = "The afternoon light felt golden."
     @State private var payload = ""
@@ -13,11 +23,23 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    introSection
-                    editorSection
-                    qrSection
-                    payloadSection
-                    securityNote
+                    Picker("Mode", selection: $selectedMode) {
+                        ForEach(Mode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    switch selectedMode {
+                    case .create:
+                        introSection
+                        editorSection
+                        qrSection
+                        payloadSection
+                        securityNote
+                    case .scan:
+                        ScanView()
+                    }
                 }
                 .padding(20)
             }
@@ -180,4 +202,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-

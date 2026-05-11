@@ -3,5 +3,8 @@ node_modules/
 dist/
 coverage/
 .build/
+*.xcuserstate
+xcuserdata/
+project.xcworkspace/xcuserdata/
 .env
 .env.local

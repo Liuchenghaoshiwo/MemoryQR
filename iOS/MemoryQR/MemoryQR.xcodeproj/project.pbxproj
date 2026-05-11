@@ -13,6 +13,11 @@
 		0A1B2C3D4E5F600000000004 /* QRCodeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000014 /* QRCodeGenerator.swift */; };
 		0A1B2C3D4E5F600000000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000015 /* Assets.xcassets */; };
 		0A1B2C3D4E5F600000000006 /* MemoryPayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000016 /* MemoryPayloadTests.swift */; };
+		0A1B2C3D4E5F600000000039 /* MemoryQRDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000040 /* MemoryQRDecoderTests.swift */; };
+		0A1B2C3D4E5F600000000041 /* MemoryQRDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000042 /* MemoryQRDecoder.swift */; };
+		0A1B2C3D4E5F600000000043 /* QRImageDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000044 /* QRImageDecoder.swift */; };
+		0A1B2C3D4E5F600000000045 /* CameraScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000046 /* CameraScannerView.swift */; };
+		0A1B2C3D4E5F600000000047 /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000048 /* ScanView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,6 +39,11 @@
 		0A1B2C3D4E5F600000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0A1B2C3D4E5F600000000016 /* MemoryPayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryPayloadTests.swift; sourceTree = "<group>"; };
 		0A1B2C3D4E5F600000000017 /* MemoryQRTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemoryQRTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A1B2C3D4E5F600000000040 /* MemoryQRDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryQRDecoderTests.swift; sourceTree = "<group>"; };
+		0A1B2C3D4E5F600000000042 /* MemoryQRDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryQRDecoder.swift; sourceTree = "<group>"; };
+		0A1B2C3D4E5F600000000044 /* QRImageDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRImageDecoder.swift; sourceTree = "<group>"; };
+		0A1B2C3D4E5F600000000046 /* CameraScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraScannerView.swift; sourceTree = "<group>"; };
+		0A1B2C3D4E5F600000000048 /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,8 +78,12 @@
 			children = (
 				0A1B2C3D4E5F600000000011 /* MemoryQRApp.swift */,
 				0A1B2C3D4E5F600000000012 /* ContentView.swift */,
+				0A1B2C3D4E5F600000000048 /* ScanView.swift */,
+				0A1B2C3D4E5F600000000046 /* CameraScannerView.swift */,
 				0A1B2C3D4E5F600000000013 /* MemoryPayload.swift */,
+				0A1B2C3D4E5F600000000042 /* MemoryQRDecoder.swift */,
 				0A1B2C3D4E5F600000000014 /* QRCodeGenerator.swift */,
+				0A1B2C3D4E5F600000000044 /* QRImageDecoder.swift */,
 				0A1B2C3D4E5F600000000015 /* Assets.xcassets */,
 			);
 			path = MemoryQR;
@@ -79,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				0A1B2C3D4E5F600000000016 /* MemoryPayloadTests.swift */,
+				0A1B2C3D4E5F600000000040 /* MemoryQRDecoderTests.swift */,
 			);
 			path = MemoryQRTests;
 			sourceTree = "<group>";
@@ -195,6 +210,10 @@
 				0A1B2C3D4E5F600000000002 /* ContentView.swift in Sources */,
 				0A1B2C3D4E5F600000000003 /* MemoryPayload.swift in Sources */,
 				0A1B2C3D4E5F600000000004 /* QRCodeGenerator.swift in Sources */,
+				0A1B2C3D4E5F600000000041 /* MemoryQRDecoder.swift in Sources */,
+				0A1B2C3D4E5F600000000043 /* QRImageDecoder.swift in Sources */,
+				0A1B2C3D4E5F600000000047 /* ScanView.swift in Sources */,
+				0A1B2C3D4E5F600000000045 /* CameraScannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,6 +222,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0A1B2C3D4E5F600000000006 /* MemoryPayloadTests.swift in Sources */,
+				0A1B2C3D4E5F600000000039 /* MemoryQRDecoderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -341,6 +361,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "MemoryQR uses the camera to scan QR codes and recover saved memories.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "MemoryQR saves generated QR codes to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -366,6 +387,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "MemoryQR uses the camera to scan QR codes and recover saved memories.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "MemoryQR saves generated QR codes to your photo library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -452,4 +474,3 @@
 	};
 	rootObject = 0A1B2C3D4E5F600000000008 /* Project object */;
 }
-
