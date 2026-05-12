@@ -18,6 +18,8 @@
 		0A1B2C3D4E5F600000000043 /* QRImageDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000044 /* QRImageDecoder.swift */; };
 		0A1B2C3D4E5F600000000045 /* CameraScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000046 /* CameraScannerView.swift */; };
 		0A1B2C3D4E5F600000000047 /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000048 /* ScanView.swift */; };
+		0A1B2C3D4E5F600000000049 /* EncryptedMemoryPayloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000050 /* EncryptedMemoryPayloadTests.swift */; };
+		0A1B2C3D4E5F600000000051 /* EncryptedMemoryPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1B2C3D4E5F600000000052 /* EncryptedMemoryPayload.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +46,8 @@
 		0A1B2C3D4E5F600000000044 /* QRImageDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRImageDecoder.swift; sourceTree = "<group>"; };
 		0A1B2C3D4E5F600000000046 /* CameraScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraScannerView.swift; sourceTree = "<group>"; };
 		0A1B2C3D4E5F600000000048 /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		0A1B2C3D4E5F600000000050 /* EncryptedMemoryPayloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedMemoryPayloadTests.swift; sourceTree = "<group>"; };
+		0A1B2C3D4E5F600000000052 /* EncryptedMemoryPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedMemoryPayload.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +85,7 @@
 				0A1B2C3D4E5F600000000048 /* ScanView.swift */,
 				0A1B2C3D4E5F600000000046 /* CameraScannerView.swift */,
 				0A1B2C3D4E5F600000000013 /* MemoryPayload.swift */,
+				0A1B2C3D4E5F600000000052 /* EncryptedMemoryPayload.swift */,
 				0A1B2C3D4E5F600000000042 /* MemoryQRDecoder.swift */,
 				0A1B2C3D4E5F600000000014 /* QRCodeGenerator.swift */,
 				0A1B2C3D4E5F600000000044 /* QRImageDecoder.swift */,
@@ -94,6 +99,7 @@
 			children = (
 				0A1B2C3D4E5F600000000016 /* MemoryPayloadTests.swift */,
 				0A1B2C3D4E5F600000000040 /* MemoryQRDecoderTests.swift */,
+				0A1B2C3D4E5F600000000050 /* EncryptedMemoryPayloadTests.swift */,
 			);
 			path = MemoryQRTests;
 			sourceTree = "<group>";
@@ -214,6 +220,7 @@
 				0A1B2C3D4E5F600000000043 /* QRImageDecoder.swift in Sources */,
 				0A1B2C3D4E5F600000000047 /* ScanView.swift in Sources */,
 				0A1B2C3D4E5F600000000045 /* CameraScannerView.swift in Sources */,
+				0A1B2C3D4E5F600000000051 /* EncryptedMemoryPayload.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -223,6 +230,7 @@
 			files = (
 				0A1B2C3D4E5F600000000006 /* MemoryPayloadTests.swift in Sources */,
 				0A1B2C3D4E5F600000000039 /* MemoryQRDecoderTests.swift in Sources */,
+				0A1B2C3D4E5F600000000049 /* EncryptedMemoryPayloadTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

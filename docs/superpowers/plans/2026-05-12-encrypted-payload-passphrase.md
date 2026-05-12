@@ -166,7 +166,7 @@ Expected: PASS, 5 tests.
 - Create: `iOS/MemoryQR/MemoryQRTests/EncryptedMemoryPayloadTests.swift`
 - Modify: `iOS/MemoryQR/MemoryQR.xcodeproj/project.pbxproj`
 
-- [ ] **Step 1: Write failing XCTest service tests**
+- [x] **Step 1: Write failing XCTest service tests**
 
 Create `iOS/MemoryQR/MemoryQRTests/EncryptedMemoryPayloadTests.swift`:
 
@@ -263,7 +263,7 @@ final class EncryptedMemoryPayloadTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Add test file to Xcode project and verify RED**
+- [x] **Step 2: Add test file to Xcode project and verify RED**
 
 Run:
 
@@ -273,7 +273,7 @@ xcodebuild test -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -desti
 
 Expected: FAIL because `EncryptedMemoryPayload` does not exist.
 
-- [ ] **Step 3: Implement `EncryptedMemoryPayload.swift`**
+- [x] **Step 3: Implement `EncryptedMemoryPayload.swift`**
 
 Use `CryptoKit` for AES-GCM, `CommonCrypto` for PBKDF2, base64url helpers, and sorted JSON encoding. Expose:
 
@@ -308,7 +308,7 @@ enum EncryptedMemoryPayload {
 }
 ```
 
-- [ ] **Step 4: Verify iOS service tests pass**
+- [x] **Step 4: Verify iOS service tests pass**
 
 Run the same `xcodebuild test` command.
 
