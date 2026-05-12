@@ -16,7 +16,7 @@
 - Create: `src/encryptedMemoryPayload.js`
 - Create: `test/encryptedMemoryPayload.test.js`
 
-- [ ] **Step 1: Write failing Node tests**
+- [x] **Step 1: Write failing Node tests**
 
 Create `test/encryptedMemoryPayload.test.js`:
 
@@ -143,17 +143,17 @@ test("decryptEncryptedMemoryPayload rejects wrong passphrases", async () => {
 });
 ```
 
-- [ ] **Step 2: Verify Node tests fail for missing module**
+- [x] **Step 2: Verify Node tests fail for missing module**
 
 Run: `node --test test/encryptedMemoryPayload.test.js`
 
 Expected: FAIL with module not found for `src/encryptedMemoryPayload.js`.
 
-- [ ] **Step 3: Implement JS encrypted helper**
+- [x] **Step 3: Implement JS encrypted helper**
 
 Create `src/encryptedMemoryPayload.js` with `createEncryptedMemoryPayload`, `parseEncryptedMemoryEnvelope`, and `decryptEncryptedMemoryPayload`. Use Node `crypto.webcrypto.subtle` for PBKDF2 and AES-GCM. Encode `ciphertext` as encrypted bytes plus tag in Web Crypto's returned AES-GCM output. Use base64url without padding and validate every envelope field.
 
-- [ ] **Step 4: Verify Node encrypted tests pass**
+- [x] **Step 4: Verify Node encrypted tests pass**
 
 Run: `node --test test/encryptedMemoryPayload.test.js`
 
