@@ -14,6 +14,9 @@ struct ContentView: View {
     @State private var selectedMode = Mode.create
     @State private var title = "Beach day"
     @State private var message = "The afternoon light felt golden."
+    @State private var shouldEncrypt = false
+    @State private var passphrase = ""
+    @State private var confirmPassphrase = ""
     @State private var payload = ""
     @State private var qrImage: UIImage?
     @State private var statusMessage = ""
@@ -66,20 +69,56 @@ struct ContentView: View {
             TextField("Title", text: $title)
                 .textFieldStyle(.roundedBorder)
                 .onChange(of: title) {
-                    generateQRCode()
+                    if !shouldEncrypt {
+                        generateQRCode()
+                    }
                 }
 
             TextField("Memory message", text: $message, axis: .vertical)
                 .lineLimit(4...8)
                 .textFieldStyle(.roundedBorder)
                 .onChange(of: message) {
+                    if !shouldEncrypt {
+                        generateQRCode()
+                    }
+                }
+
+            Toggle(isOn: $shouldEncrypt) {
+                Label("Encrypt with passphrase", systemImage: shouldEncrypt ? "lock.fill" : "lock.open")
+            }
+            .onChange(of: shouldEncrypt) {
+                if shouldEncrypt {
+                    clearGeneratedQRCode(status: "Enter a passphrase, then generate an encrypted QR.")
+                } else {
+                    passphrase = ""
+                    confirmPassphrase = ""
                     generateQRCode()
                 }
+            }
+
+            if shouldEncrypt {
+                SecureField("Passphrase", text: $passphrase)
+                    .textFieldStyle(.roundedBorder)
+
+                SecureField("Confirm passphrase", text: $confirmPassphrase)
+                    .textFieldStyle(.roundedBorder)
+
+                Text("The passphrase is not stored. You will need it to recover this encrypted MemoryQR.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !statusMessage.isEmpty {
+                Text(statusMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
 
             Button {
                 generateQRCode()
             } label: {
-                Label("Generate QR", systemImage: "qrcode")
+                Label(shouldEncrypt ? "Generate Encrypted QR" : "Generate QR", systemImage: "qrcode")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -119,7 +158,7 @@ struct ContentView: View {
             .buttonStyle(.bordered)
             .disabled(qrImage == nil || isSaving)
 
-            if !statusMessage.isEmpty {
+            if !statusMessage.isEmpty && !shouldEncrypt {
                 Text(statusMessage)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -146,7 +185,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Security boundary", systemImage: "lock.shield")
                 .font(.headline)
-            Text("This QR is not encrypted yet. Authentication, whitelist checks, secure scanning, and encrypted payloads are planned for the next phase.")
+            Text(shouldEncrypt ? "This QR is encrypted with your passphrase. Login, whitelist authorization, secure sharing, and media attachments are still future work." : "This QR is not encrypted. Turn on passphrase encryption to create an encrypted MemoryQR. Login, whitelist authorization, and secure sharing are still future work.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -156,7 +195,23 @@ struct ContentView: View {
 
     private func generateQRCode() {
         do {
-            payload = try MemoryPayload.create(title: title, message: message)
+            let memoryPayload = try MemoryPayload.create(title: title, message: message)
+            if shouldEncrypt {
+                guard !passphrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    clearGeneratedQRCode(status: "Enter a passphrase before generating an encrypted QR.")
+                    return
+                }
+
+                guard passphrase == confirmPassphrase else {
+                    clearGeneratedQRCode(status: "Passphrases do not match.")
+                    return
+                }
+
+                payload = try EncryptedMemoryPayload.create(memoryPayload: memoryPayload, passphrase: passphrase)
+            } else {
+                payload = memoryPayload
+            }
+
             qrImage = QRCodeGenerator.makeImage(from: payload)
             statusMessage = qrImage == nil ? "QR generation failed." : ""
         } catch {
@@ -164,6 +219,12 @@ struct ContentView: View {
             qrImage = nil
             statusMessage = "Could not create a MemoryQR payload."
         }
+    }
+
+    private func clearGeneratedQRCode(status: String) {
+        payload = ""
+        qrImage = nil
+        statusMessage = status
     }
 
     private func saveQRCode() {

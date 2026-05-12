@@ -371,17 +371,17 @@ Expected: PASS.
 - Modify: `iOS/MemoryQR/MemoryQR/ScanView.swift`
 - Modify: `iOS/MemoryQR/MemoryQRTests/MemoryQRDecoderTests.swift`
 
-- [ ] **Step 1: Add QR round-trip test for encrypted envelope images**
+- [x] **Step 1: Add QR round-trip test for encrypted envelope images**
 
 Add a test that creates an encrypted envelope payload, generates a QR image with `QRCodeGenerator.makeImage`, decodes it with `QRImageDecoder.decode`, and checks that `EncryptedMemoryPayload.inspect(decodedPayload)` returns `memoryqr.encrypted.v1`.
 
-- [ ] **Step 2: Verify the QR round-trip test passes against service code**
+- [x] **Step 2: Verify the QR round-trip test passes against service code**
 
 Run the same `xcodebuild test` command.
 
 Expected: PASS.
 
-- [ ] **Step 3: Update create UI**
+- [x] **Step 3: Update create UI**
 
 In `ContentView`, add:
 
@@ -391,7 +391,7 @@ In `ContentView`, add:
 
 Add a toggle and secure fields in the editor section. In plain mode, keep immediate regeneration on title/message changes. In encrypted mode, generate only when the button is tapped. Reject empty or mismatched passphrases with visible status text. Use `EncryptedMemoryPayload.create(memoryPayload:passphrase:)` when encryption is enabled.
 
-- [ ] **Step 4: Update scan UI**
+- [x] **Step 4: Update scan UI**
 
 In `ScanView`, add locked encrypted state:
 
@@ -403,7 +403,7 @@ In `ScanView`, add locked encrypted state:
 - call `MemoryQRDecoder.decrypt` on unlock
 - show generic decrypt failure for wrong passphrase or tampering
 
-- [ ] **Step 5: Verify UI code compiles**
+- [x] **Step 5: Verify UI code compiles**
 
 Run the same `xcodebuild test` command.
 

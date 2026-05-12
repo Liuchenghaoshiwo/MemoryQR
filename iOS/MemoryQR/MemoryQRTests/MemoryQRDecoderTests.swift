@@ -116,6 +116,27 @@ final class MemoryQRDecoderTests: XCTestCase {
         XCTAssertEqual(decodedPayload, payload)
     }
 
+    func testQRImageDecoderReadsGeneratedEncryptedMemoryQREnvelope() throws {
+        let memoryPayload = try MemoryPayload.create(
+            title: "Short locked note",
+            message: "Small enough for QR.",
+            createdAt: "2026-05-12T12:00:00.000Z"
+        )
+        let envelopePayload = try EncryptedMemoryPayload.create(
+            memoryPayload: memoryPayload,
+            passphrase: "qr-passphrase",
+            salt: Data((1...16).map(UInt8.init)),
+            nonce: Data((21...32).map(UInt8.init)),
+            iterations: 1000
+        )
+        let image = try XCTUnwrap(QRCodeGenerator.makeImage(from: envelopePayload, scale: 16))
+
+        let decodedPayload = try QRImageDecoder.decode(from: image)
+        let envelope = try EncryptedMemoryPayload.inspect(decodedPayload)
+
+        XCTAssertEqual(envelope.schema, "memoryqr.encrypted.v1")
+    }
+
     func testQRImageDecoderRejectsImagesWithoutQRCode() {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 160, height: 160))
         let image = renderer.image { context in

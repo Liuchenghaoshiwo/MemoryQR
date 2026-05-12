@@ -7,6 +7,9 @@ struct ScanView: View {
     @State private var cameraAuthorization = AVCaptureDevice.authorizationStatus(for: .video)
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var decodedMemory: MemoryPayload.Memory?
+    @State private var lockedEnvelope: EncryptedMemoryPayload.Envelope?
+    @State private var lockedEnvelopePayload = ""
+    @State private var unlockPassphrase = ""
     @State private var rawPayload = ""
     @State private var statusMessage = ""
     @State private var isLoadingPhoto = false
@@ -16,6 +19,7 @@ struct ScanView: View {
             introSection
             cameraSection
             photoSection
+            lockedSection
             resultSection
             securityNote
         }
@@ -31,7 +35,7 @@ struct ScanView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Recover a memory")
                 .font(.title2.bold())
-            Text("Scan a MemoryQR with the camera or choose a QR image from Photos to recover the plain payload.")
+            Text("Scan a MemoryQR with the camera or choose a QR image from Photos. Plain payloads open directly; encrypted payloads require the passphrase.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -108,6 +112,37 @@ struct ScanView: View {
     }
 
     @ViewBuilder
+    private var lockedSection: some View {
+        if let lockedEnvelope {
+            VStack(alignment: .leading, spacing: 14) {
+                Label("Encrypted MemoryQR", systemImage: "lock.fill")
+                    .font(.headline)
+
+                Text("Enter the passphrase used to create this QR code.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Label(lockedEnvelope.createdAt, systemImage: "calendar")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                SecureField("Passphrase", text: $unlockPassphrase)
+                    .textFieldStyle(.roundedBorder)
+
+                Button {
+                    unlockEncryptedMemory()
+                } label: {
+                    Label("Unlock MemoryQR", systemImage: "lock.open")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    @ViewBuilder
     private var resultSection: some View {
         if let decodedMemory {
             VStack(alignment: .leading, spacing: 12) {
@@ -137,9 +172,9 @@ struct ScanView: View {
 
     private var securityNote: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Plain payload only", systemImage: "lock.open")
+            Label("Passphrase encryption", systemImage: "lock.shield")
                 .font(.headline)
-            Text("This scanner parses the current unencrypted MemoryQR JSON payload. Authentication, whitelist checks, encrypted decoding, and media attachments are still future work.")
+            Text("This scanner can recover plain MemoryQR JSON or unlock passphrase-encrypted MemoryQR envelopes. Login, whitelist authorization, secure sharing, and media attachments are still future work.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -178,6 +213,7 @@ struct ScanView: View {
             } catch QRImageDecoder.DecodeError.noQRCodeFound {
                 await MainActor.run {
                     decodedMemory = nil
+                    clearLockedEnvelope()
                     rawPayload = ""
                     statusMessage = "No QR code was found in that image."
                     isLoadingPhoto = false
@@ -185,6 +221,7 @@ struct ScanView: View {
             } catch {
                 await MainActor.run {
                     decodedMemory = nil
+                    clearLockedEnvelope()
                     rawPayload = ""
                     statusMessage = "That image could not be read as a MemoryQR."
                     isLoadingPhoto = false
@@ -195,19 +232,54 @@ struct ScanView: View {
 
     private func handleScannedText(_ scannedText: String) {
         do {
-            let memory = try MemoryQRDecoder.decode(scannedText)
-            decodedMemory = memory
-            rawPayload = scannedText
-            statusMessage = "MemoryQR decoded."
+            let result = try MemoryQRDecoder.inspect(scannedText)
+            switch result {
+            case .plain(let memory):
+                decodedMemory = memory
+                clearLockedEnvelope()
+                rawPayload = scannedText
+                statusMessage = "MemoryQR decoded."
+            case .encrypted(let envelope):
+                decodedMemory = nil
+                lockedEnvelope = envelope
+                lockedEnvelopePayload = scannedText
+                unlockPassphrase = ""
+                rawPayload = ""
+                statusMessage = "Encrypted MemoryQR found. Enter the passphrase to unlock it."
+            }
         } catch MemoryQRDecoder.DecodeError.unsupportedSchema {
             decodedMemory = nil
+            clearLockedEnvelope()
             rawPayload = scannedText
             statusMessage = "This MemoryQR schema is not supported yet."
         } catch {
             decodedMemory = nil
+            clearLockedEnvelope()
             rawPayload = scannedText
             statusMessage = "This QR code is not a valid MemoryQR payload."
         }
+    }
+
+    private func unlockEncryptedMemory() {
+        do {
+            let memory = try MemoryQRDecoder.decrypt(lockedEnvelopePayload, passphrase: unlockPassphrase)
+            decodedMemory = memory
+            rawPayload = lockedEnvelopePayload
+            clearLockedEnvelope()
+            statusMessage = "Encrypted MemoryQR unlocked."
+        } catch MemoryQRDecoder.DecodeError.emptyPassphrase {
+            statusMessage = "Enter the passphrase for this encrypted MemoryQR."
+        } catch {
+            decodedMemory = nil
+            rawPayload = ""
+            statusMessage = "Could not decrypt this MemoryQR with that passphrase."
+        }
+    }
+
+    private func clearLockedEnvelope() {
+        lockedEnvelope = nil
+        lockedEnvelopePayload = ""
+        unlockPassphrase = ""
     }
 }
 
@@ -218,4 +290,3 @@ struct ScanView: View {
     }
     .background(Color(.systemGroupedBackground))
 }
-
