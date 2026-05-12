@@ -34,6 +34,75 @@ final class MemoryQRDecoderTests: XCTestCase {
         }
     }
 
+    func testInspectReturnsPlainMemoryResultForPlainPayload() throws {
+        let payload = try MemoryPayload.create(
+            title: "Plain",
+            message: "Still supported.",
+            createdAt: "2026-05-12T10:00:00.000Z"
+        )
+        let memory = try MemoryPayload.parse(payload)
+
+        let result = try MemoryQRDecoder.inspect(payload)
+
+        XCTAssertEqual(result, .plain(memory))
+    }
+
+    func testInspectReturnsEncryptedResultForEncryptedEnvelope() throws {
+        let memoryPayload = try MemoryPayload.create(
+            title: "Locked",
+            message: "Needs a passphrase.",
+            createdAt: "2026-05-12T10:30:00.000Z"
+        )
+        let envelopePayload = try EncryptedMemoryPayload.create(
+            memoryPayload: memoryPayload,
+            passphrase: "scan-passphrase",
+            salt: Data((1...16).map(UInt8.init)),
+            nonce: Data((21...32).map(UInt8.init)),
+            iterations: 1000
+        )
+        let envelope = try EncryptedMemoryPayload.inspect(envelopePayload)
+
+        let result = try MemoryQRDecoder.inspect(envelopePayload)
+
+        XCTAssertEqual(result, .encrypted(envelope))
+    }
+
+    func testDecryptEncryptedPayloadReturnsMemory() throws {
+        let memoryPayload = try MemoryPayload.create(
+            title: "Unlocked",
+            message: "The passphrase worked.",
+            createdAt: "2026-05-12T11:00:00.000Z"
+        )
+        let envelopePayload = try EncryptedMemoryPayload.create(
+            memoryPayload: memoryPayload,
+            passphrase: "unlock-passphrase",
+            salt: Data((1...16).map(UInt8.init)),
+            nonce: Data((21...32).map(UInt8.init)),
+            iterations: 1000
+        )
+
+        let memory = try MemoryQRDecoder.decrypt(envelopePayload, passphrase: "unlock-passphrase")
+
+        XCTAssertEqual(memory.title, "Unlocked")
+        XCTAssertEqual(memory.message, "The passphrase worked.")
+        XCTAssertEqual(memory.createdAt, "2026-05-12T11:00:00.000Z")
+    }
+
+    func testDecryptEncryptedPayloadRejectsWrongPassphrase() throws {
+        let memoryPayload = try MemoryPayload.create(title: "Private", message: "Keep sealed.")
+        let envelopePayload = try EncryptedMemoryPayload.create(
+            memoryPayload: memoryPayload,
+            passphrase: "right-passphrase",
+            salt: Data((1...16).map(UInt8.init)),
+            nonce: Data((21...32).map(UInt8.init)),
+            iterations: 1000
+        )
+
+        XCTAssertThrowsError(try MemoryQRDecoder.decrypt(envelopePayload, passphrase: "wrong-passphrase")) { error in
+            XCTAssertEqual(error as? MemoryQRDecoder.DecodeError, .decryptionFailed)
+        }
+    }
+
     func testQRImageDecoderReadsGeneratedMemoryQRImage() throws {
         let payload = try MemoryPayload.create(
             title: "Train window",
@@ -59,4 +128,3 @@ final class MemoryQRDecoderTests: XCTestCase {
         }
     }
 }
-

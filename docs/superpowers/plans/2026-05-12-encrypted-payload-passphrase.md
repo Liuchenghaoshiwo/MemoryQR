@@ -320,7 +320,7 @@ Expected: PASS for existing and encrypted payload tests.
 - Modify: `iOS/MemoryQR/MemoryQR/MemoryQRDecoder.swift`
 - Modify: `iOS/MemoryQR/MemoryQRTests/MemoryQRDecoderTests.swift`
 
-- [ ] **Step 1: Write failing decoder routing tests**
+- [x] **Step 1: Write failing decoder routing tests**
 
 Append tests that expect:
 
@@ -334,13 +334,13 @@ XCTAssertEqual(encryptedResult, .encrypted(envelope))
 
 Also test `MemoryQRDecoder.decrypt(envelopePayload, passphrase:)` returns the memory and wrong passphrase maps to `.decryptionFailed`.
 
-- [ ] **Step 2: Verify decoder tests fail**
+- [x] **Step 2: Verify decoder tests fail**
 
 Run the same `xcodebuild test` command.
 
 Expected: FAIL because `MemoryQRDecoder.inspect` and encrypted decrypt routing do not exist.
 
-- [ ] **Step 3: Implement decoder routing**
+- [x] **Step 3: Implement decoder routing**
 
 Add:
 
@@ -358,7 +358,7 @@ static func decrypt(_ envelopePayload: String, passphrase: String) throws -> Mem
 
 Keep existing `decode(_:)` behavior for plain scans.
 
-- [ ] **Step 4: Verify decoder routing passes**
+- [x] **Step 4: Verify decoder routing passes**
 
 Run the same `xcodebuild test` command.
 
