@@ -2,7 +2,7 @@
 
 MemoryQR is an early prototype for a small tool that stores memories inside QR-friendly payloads.
 
-This repository now contains the original static public preview plus a native SwiftUI iOS MVP that can generate a MemoryQR payload as a QR image.
+This repository now contains the original static public preview plus a native SwiftUI iOS MVP that can generate plain or passphrase-encrypted MemoryQR payloads as QR images.
 
 ## Preview
 
@@ -12,20 +12,21 @@ The app is designed to run as a static site and deploy through GitHub Pages.
 
 - Static landing page for the project
 - Memory payload preview demo
-- Tested payload creation and parsing helpers
+- Tested plain and passphrase-encrypted payload helpers
 - GitHub Pages workflow
 - SwiftUI iOS app shell under `iOS/MemoryQR`
 - Native QR generation with Apple's Core Image `CIQRCodeGenerator`
 - Save generated QR images to Photos from the iOS app
 - Camera QR scanning with AVFoundation
 - QR image import and parsing from Photos
+- Passphrase-encrypted QR payload creation and recovery in the iOS app
 
-The iOS QR payload is not encrypted yet. Authentication, whitelist checks, secure decoding, and media attachments are planned next steps.
+The iOS app can encrypt a memory payload with a user-entered passphrase and unlock it later with the same passphrase. Authentication, whitelist authorization, cloud sync, secure sharing, and media attachments are still planned work.
 
 ## Roadmap
 
 - Generate real QR codes from memory payloads
-- Add authentication, whitelist authorization, and encrypted payload support
+- Add authentication and whitelist authorization
 - Add secure attachment support for photos, audio, and video
 - Add export and download options
 - Explore local-first storage for private memories

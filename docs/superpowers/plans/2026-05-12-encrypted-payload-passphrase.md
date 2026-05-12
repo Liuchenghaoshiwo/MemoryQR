@@ -415,15 +415,15 @@ Expected: PASS.
 - Modify: `README.md`
 - Modify: `AGENTS.md`
 
-- [ ] **Step 1: Update docs**
+- [x] **Step 1: Update docs**
 
 Update current status to mention passphrase-encrypted QR payload creation and recovery. Keep language precise that login, whitelist authorization, cloud storage, secure sharing, and media attachments remain incomplete.
 
-- [ ] **Step 2: Update AGENTS session notes**
+- [x] **Step 2: Update AGENTS session notes**
 
 Add a concise `2026-05-12 Encrypted Payload Session Notes` section with changed files, verification commands, incomplete work, and best next task.
 
-- [ ] **Step 3: Run all project verification**
+- [x] **Step 3: Run all project verification**
 
 Run:
 
@@ -434,13 +434,13 @@ xcodebuild test -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -desti
 
 Expected: both commands PASS.
 
-- [ ] **Step 4: Check git status**
+- [x] **Step 4: Check git status**
 
 Run: `git status --short`
 
 Expected: only intended files changed.
 
-- [ ] **Step 5: Commit implementation**
+- [x] **Step 5: Commit implementation**
 
 Commit message:
 
