@@ -136,6 +136,14 @@ Recommended next implementation steps:
 - Still incomplete: login, secure whitelist authorization, account-based authorized decode, cloud storage, secure sharing, actual media attachment storage, and manual camera testing on a physical iPhone.
 - Best next task: manually re-check Scan UX on a physical iPhone, then continue with signed/key-based recipient authorization or encrypted attachment references.
 
+## 2026-05-13 App Icon Session Notes
+
+- Added a minimal 1024px iOS app icon asset at `iOS/MemoryQR/MemoryQR/Assets.xcassets/AppIcon.appiconset/MemoryQRAppIcon.png`.
+- Updated `AppIcon.appiconset/Contents.json` to reference the new universal iOS icon.
+- Icon direction: dark local-first memory archive background, centered QR-like mark, and a small protected memory spark/capsule.
+- Still incomplete: login, secure whitelist authorization, account-based authorized decode, cloud storage, secure sharing, actual media attachment storage, and manual camera/icon review on a physical iPhone.
+- Best next task: manually review the icon on device home screen sizes, then continue with signed/key-based recipient authorization or encrypted attachment references.
+
 ## Session Handoff Rule
 
 Every future Codex session should start by reading this file. After finishing any meaningful change, update this file before the final response so the next session knows:
