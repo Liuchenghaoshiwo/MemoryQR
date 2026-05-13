@@ -138,9 +138,10 @@ Recommended next implementation steps:
 
 ## 2026-05-13 App Icon Session Notes
 
-- Added a minimal 1024px iOS app icon asset at `iOS/MemoryQR/MemoryQR/Assets.xcassets/AppIcon.appiconset/MemoryQRAppIcon.png`.
+- Replaced the iOS app icon with the user-provided MemoryQR design, resized to a 1024px RGB PNG with no alpha at `iOS/MemoryQR/MemoryQR/Assets.xcassets/AppIcon.appiconset/MemoryQRAppIcon.png`.
 - Updated `AppIcon.appiconset/Contents.json` to reference the new universal iOS icon.
 - Icon direction: dark local-first memory archive background, centered QR-like mark, and a small protected memory spark/capsule.
+- Verified the icon dimensions and alpha channel with `sips -g pixelWidth -g pixelHeight -g hasAlpha`.
 - Still incomplete: login, secure whitelist authorization, account-based authorized decode, cloud storage, secure sharing, actual media attachment storage, and manual camera/icon review on a physical iPhone.
 - Best next task: manually review the icon on device home screen sizes, then continue with signed/key-based recipient authorization or encrypted attachment references.
 
