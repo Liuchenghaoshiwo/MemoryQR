@@ -35,7 +35,39 @@ test("createEncryptedMemoryPayload emits stable encrypted envelope metadata", as
   assert.equal(envelope.salt, "AQIDBAUGBwgJCgsMDQ4PEA");
   assert.equal(envelope.nonce, "FRYXGBkaGxwdHh8g");
   assert.equal(envelope.createdAt, "2026-05-12T08:01:00.000Z");
+  assert.deepEqual(envelope.authorization, {
+    mode: "local-passphrase",
+    policy: "passphrase-only",
+    allowedReaderIds: [],
+  });
   assert.notEqual(envelope.ciphertext.length, 0);
+});
+
+test("createEncryptedMemoryPayload can declare a local reader allowlist", async () => {
+  const memoryPayload = createMemoryPayload({
+    title: "Family archive",
+    message: "Only named local readers should unlock this QR.",
+    createdAt: "2026-05-13T08:00:00.000Z",
+  });
+
+  const envelopePayload = await createEncryptedMemoryPayload({
+    memoryPayload,
+    passphrase: "family-passphrase",
+    createdAt: "2026-05-13T08:01:00.000Z",
+    salt,
+    nonce,
+    iterations: 1000,
+    authorization: {
+      allowedReaderIds: [" Family.Phone ", "family.phone", "guest-1"],
+    },
+  });
+
+  const envelope = parseEncryptedMemoryEnvelope(envelopePayload);
+  assert.deepEqual(envelope.authorization, {
+    mode: "local-passphrase",
+    policy: "local-reader-allowlist",
+    allowedReaderIds: ["family.phone", "guest-1"],
+  });
 });
 
 test("decryptEncryptedMemoryPayload recovers memory with correct passphrase", async () => {
@@ -61,6 +93,56 @@ test("decryptEncryptedMemoryPayload recovers memory with correct passphrase", as
     message: "Jasmine after rain.",
     createdAt: "2026-05-12T09:00:00.000Z",
   });
+});
+
+test("decryptEncryptedMemoryPayload rejects local readers outside the allowlist", async () => {
+  const memoryPayload = createMemoryPayload({
+    title: "Private table",
+    message: "The reader ID must match before passphrase unlock.",
+  });
+  const envelopePayload = await createEncryptedMemoryPayload({
+    memoryPayload,
+    passphrase: "shared-passphrase",
+    salt,
+    nonce,
+    iterations: 1000,
+    authorization: {
+      allowedReaderIds: ["family-phone"],
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      decryptEncryptedMemoryPayload(envelopePayload, "shared-passphrase", {
+        localReaderId: "visitor-phone",
+      }),
+    /not authorized/,
+  );
+});
+
+test("decryptEncryptedMemoryPayload accepts local readers inside the allowlist", async () => {
+  const memoryPayload = createMemoryPayload({
+    title: "Kitchen note",
+    message: "The local reader ID matched.",
+    createdAt: "2026-05-13T09:00:00.000Z",
+  });
+  const envelopePayload = await createEncryptedMemoryPayload({
+    memoryPayload,
+    passphrase: "kitchen-passphrase",
+    salt,
+    nonce,
+    iterations: 1000,
+    authorization: {
+      allowedReaderIds: ["kitchen-ipad"],
+    },
+  });
+
+  const memory = await decryptEncryptedMemoryPayload(envelopePayload, "kitchen-passphrase", {
+    localReaderId: " Kitchen-iPad ",
+  });
+
+  assert.equal(memory.title, "Kitchen note");
+  assert.equal(memory.message, "The local reader ID matched.");
 });
 
 test("encrypted payload helpers reject empty passphrases", async () => {
@@ -94,6 +176,27 @@ test("parseEncryptedMemoryEnvelope rejects malformed envelopes", () => {
           nonce: "FRYXGBkaGxwdHh8g",
           ciphertext: "abc",
           createdAt: "2026-05-12T08:01:00.000Z",
+        }),
+      ),
+    /Invalid encrypted MemoryQR envelope/,
+  );
+  assert.throws(
+    () =>
+      parseEncryptedMemoryEnvelope(
+        JSON.stringify({
+          schema: "memoryqr.encrypted.v1",
+          alg: "AES-256-GCM",
+          kdf: "PBKDF2-HMAC-SHA256",
+          iterations: 1000,
+          salt: "AQIDBAUGBwgJCgsMDQ4PEA",
+          nonce: "FRYXGBkaGxwdHh8g",
+          ciphertext: "abcdefghijklmnopqrstuvwxyz",
+          createdAt: "2026-05-12T08:01:00.000Z",
+          authorization: {
+            mode: "account-whitelist",
+            policy: "local-reader-allowlist",
+            allowedReaderIds: ["family-phone"],
+          },
         }),
       ),
     /Invalid encrypted MemoryQR envelope/,

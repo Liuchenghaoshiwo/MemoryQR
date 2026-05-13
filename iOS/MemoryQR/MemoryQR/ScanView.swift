@@ -10,15 +10,16 @@ struct ScanView: View {
     @State private var lockedEnvelope: EncryptedMemoryPayload.Envelope?
     @State private var lockedEnvelopePayload = ""
     @State private var unlockPassphrase = ""
+    @State private var localReaderId = ""
     @State private var rawPayload = ""
-    @State private var statusMessage = ""
-    @State private var isLoadingPhoto = false
+    @State private var flowState = ScanFlowState()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             introSection
             cameraSection
             photoSection
+            statusSection
             lockedSection
             resultSection
             securityNote
@@ -49,20 +50,39 @@ struct ScanView: View {
 
             switch cameraAuthorization {
             case .authorized:
-                CameraScannerView(
-                    onCodeScanned: { scannedText in
-                        handleScannedText(scannedText)
-                    },
-                    onError: { message in
-                        statusMessage = message
+                if flowState.isCameraScanActive {
+                    CameraScannerView(
+                        onCodeScanned: { scannedText in
+                            flowState.stopCameraScan()
+                            handleScannedText(scannedText)
+                        },
+                        onError: { message in
+                            flowState.statusMessage = message
+                        }
+                    )
+                    .frame(height: 280)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(alignment: .center) {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(.white.opacity(0.7), lineWidth: 2)
+                            .frame(width: 210, height: 210)
                     }
-                )
-                .frame(height: 280)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(alignment: .center) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(.white.opacity(0.7), lineWidth: 2)
-                        .frame(width: 210, height: 210)
+
+                    Button {
+                        flowState.stopCameraScan()
+                    } label: {
+                        Label("Stop Camera Scan", systemImage: "camera.badge.ellipsis")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    Button {
+                        flowState.startCameraScan()
+                    } label: {
+                        Label("Start Camera Scan", systemImage: "camera.viewfinder")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
 
             case .notDetermined:
@@ -84,12 +104,6 @@ struct ScanView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-
-            if !statusMessage.isEmpty {
-                Text(statusMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
@@ -101,14 +115,29 @@ struct ScanView: View {
                 .font(.headline)
 
             PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                Label(isLoadingPhoto ? "Reading QR Image..." : "Choose QR Image", systemImage: "photo.on.rectangle")
+                Label(flowState.isLoadingPhoto ? "Reading QR Image..." : "Choose QR Image", systemImage: "photo.on.rectangle")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(isLoadingPhoto)
+            .disabled(flowState.isLoadingPhoto)
+            .simultaneousGesture(TapGesture().onEnded {
+                flowState.stopCameraScan()
+            })
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private var statusSection: some View {
+        if !flowState.statusMessage.isEmpty {
+            Label(flowState.statusMessage, systemImage: "info.circle")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
+        }
     }
 
     @ViewBuilder
@@ -125,6 +154,17 @@ struct ScanView: View {
                 Label(lockedEnvelope.createdAt, systemImage: "calendar")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
+                if lockedEnvelope.authorization.requiresLocalReaderId {
+                    Text("This QR declares a local reader allowlist. Enter this device's local reader ID before unlocking.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    TextField("Local reader ID", text: $localReaderId)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .textFieldStyle(.roundedBorder)
+                }
 
                 SecureField("Passphrase", text: $unlockPassphrase)
                     .textFieldStyle(.roundedBorder)
@@ -174,7 +214,7 @@ struct ScanView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Passphrase encryption", systemImage: "lock.shield")
                 .font(.headline)
-            Text("This scanner can recover plain MemoryQR JSON or unlock passphrase-encrypted MemoryQR envelopes. Login, whitelist authorization, secure sharing, and media attachments are still future work.")
+            Text("This scanner can recover plain MemoryQR JSON or unlock passphrase-encrypted MemoryQR envelopes. Local reader allowlists gate the MVP decode flow only; login, account-based whitelist authorization, secure sharing, and media attachments are still future work.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -195,8 +235,7 @@ struct ScanView: View {
             return
         }
 
-        isLoadingPhoto = true
-        statusMessage = "Reading selected image..."
+        flowState.beginPhotoImport()
 
         Task {
             do {
@@ -208,23 +247,21 @@ struct ScanView: View {
                 let decodedPayload = try QRImageDecoder.decode(from: image)
                 await MainActor.run {
                     handleScannedText(decodedPayload)
-                    isLoadingPhoto = false
+                    flowState.finishPhotoImport()
                 }
             } catch QRImageDecoder.DecodeError.noQRCodeFound {
                 await MainActor.run {
                     decodedMemory = nil
                     clearLockedEnvelope()
                     rawPayload = ""
-                    statusMessage = "No QR code was found in that image."
-                    isLoadingPhoto = false
+                    flowState.failPhotoImportNoQRCode()
                 }
             } catch {
                 await MainActor.run {
                     decodedMemory = nil
                     clearLockedEnvelope()
                     rawPayload = ""
-                    statusMessage = "That image could not be read as a MemoryQR."
-                    isLoadingPhoto = false
+                    flowState.failPhotoImportUnreadable()
                 }
             }
         }
@@ -238,41 +275,51 @@ struct ScanView: View {
                 decodedMemory = memory
                 clearLockedEnvelope()
                 rawPayload = scannedText
-                statusMessage = "MemoryQR decoded."
+                flowState.statusMessage = "MemoryQR decoded."
             case .encrypted(let envelope):
                 decodedMemory = nil
                 lockedEnvelope = envelope
                 lockedEnvelopePayload = scannedText
                 unlockPassphrase = ""
+                localReaderId = ""
                 rawPayload = ""
-                statusMessage = "Encrypted MemoryQR found. Enter the passphrase to unlock it."
+                flowState.statusMessage = envelope.authorization.requiresLocalReaderId ? "Encrypted MemoryQR found. Enter your local reader ID and passphrase to unlock it." : "Encrypted MemoryQR found. Enter the passphrase to unlock it."
             }
         } catch MemoryQRDecoder.DecodeError.unsupportedSchema {
             decodedMemory = nil
             clearLockedEnvelope()
             rawPayload = scannedText
-            statusMessage = "This MemoryQR schema is not supported yet."
+            flowState.statusMessage = "This MemoryQR schema is not supported yet."
         } catch {
             decodedMemory = nil
             clearLockedEnvelope()
             rawPayload = scannedText
-            statusMessage = "This QR code is not a valid MemoryQR payload."
+            flowState.statusMessage = "This QR code is not a valid MemoryQR payload."
         }
     }
 
     private func unlockEncryptedMemory() {
         do {
-            let memory = try MemoryQRDecoder.decrypt(lockedEnvelopePayload, passphrase: unlockPassphrase)
+            let context = EncryptedMemoryPayload.AuthorizationContext(localReaderId: localReaderId)
+            let memory = try MemoryQRDecoder.decrypt(
+                lockedEnvelopePayload,
+                passphrase: unlockPassphrase,
+                authorizationContext: context
+            )
             decodedMemory = memory
             rawPayload = lockedEnvelopePayload
             clearLockedEnvelope()
-            statusMessage = "Encrypted MemoryQR unlocked."
+            flowState.statusMessage = "Encrypted MemoryQR unlocked."
         } catch MemoryQRDecoder.DecodeError.emptyPassphrase {
-            statusMessage = "Enter the passphrase for this encrypted MemoryQR."
+            flowState.statusMessage = "Enter the passphrase for this encrypted MemoryQR."
+        } catch MemoryQRDecoder.DecodeError.unauthorizedReader {
+            decodedMemory = nil
+            rawPayload = ""
+            flowState.statusMessage = "This local reader ID is not authorized for this MemoryQR."
         } catch {
             decodedMemory = nil
             rawPayload = ""
-            statusMessage = "Could not decrypt this MemoryQR with that passphrase."
+            flowState.statusMessage = "Could not decrypt this MemoryQR with that passphrase."
         }
     }
 
@@ -280,6 +327,44 @@ struct ScanView: View {
         lockedEnvelope = nil
         lockedEnvelopePayload = ""
         unlockPassphrase = ""
+        localReaderId = ""
+    }
+}
+
+struct ScanFlowState: Equatable {
+    var isCameraScanActive = false
+    var isLoadingPhoto = false
+    var statusMessage = ""
+
+    mutating func startCameraScan() {
+        isCameraScanActive = true
+        statusMessage = ""
+    }
+
+    mutating func stopCameraScan() {
+        isCameraScanActive = false
+    }
+
+    mutating func beginPhotoImport() {
+        isCameraScanActive = false
+        isLoadingPhoto = true
+        statusMessage = "Reading selected image..."
+    }
+
+    mutating func finishPhotoImport() {
+        isLoadingPhoto = false
+    }
+
+    mutating func failPhotoImportNoQRCode() {
+        isCameraScanActive = false
+        isLoadingPhoto = false
+        statusMessage = "No QR code was found in that image."
+    }
+
+    mutating func failPhotoImportUnreadable() {
+        isCameraScanActive = false
+        isLoadingPhoto = false
+        statusMessage = "That image could not be read as a MemoryQR."
     }
 }
 

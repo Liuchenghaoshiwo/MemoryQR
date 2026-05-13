@@ -20,13 +20,16 @@ The app is designed to run as a static site and deploy through GitHub Pages.
 - Camera QR scanning with AVFoundation
 - QR image import and parsing from Photos
 - Passphrase-encrypted QR payload creation and recovery in the iOS app
+- Local reader allowlist metadata for encrypted QR decode gating
 
-The iOS app can encrypt a memory payload with a user-entered passphrase and unlock it later with the same passphrase. Authentication, whitelist authorization, cloud sync, secure sharing, and media attachments are still planned work.
+The iOS app can encrypt a memory payload with a user-entered passphrase and unlock it later with the same passphrase. Encrypted envelopes can also declare a local reader allowlist, which gates the app's decode flow before passphrase decryption. This is not account authentication or real cloud authorization; authentication, secure whitelist authorization, cloud sync, secure sharing, and media attachments are still planned work.
+
+See [`docs/authorized-decode-boundary.md`](docs/authorized-decode-boundary.md) for the current authorization boundary.
 
 ## Roadmap
 
 - Generate real QR codes from memory payloads
-- Add authentication and whitelist authorization
+- Replace the local reader allowlist MVP with real authentication and secure whitelist authorization
 - Add secure attachment support for photos, audio, and video
 - Add export and download options
 - Explore local-first storage for private memories

@@ -21,15 +21,16 @@ The goal is to build a small tool that lets people store personal memories in QR
 - `src/styles.css` - visual design and responsive layout
 - `src/app.js` - browser-side demo behavior
 - `src/memoryPayload.js` - memory payload create/parse helpers
-- `src/encryptedMemoryPayload.js` - passphrase encrypted payload envelope helpers
+- `src/encryptedMemoryPayload.js` - passphrase encrypted payload envelope and local authorization metadata helpers
 - `test/memoryPayload.test.js` - payload contract tests
 - `test/encryptedMemoryPayload.test.js` - encrypted payload contract tests
+- `docs/authorized-decode-boundary.md` - local authorized decode boundary notes
 - `iOS/MemoryQR/MemoryQR.xcodeproj` - native iOS Xcode project
 - `iOS/MemoryQR/MemoryQR/ContentView.swift` - SwiftUI memory entry, QR preview, and save flow
 - `iOS/MemoryQR/MemoryQR/ScanView.swift` - camera scan, Photos import, result display, and scan errors
 - `iOS/MemoryQR/MemoryQR/CameraScannerView.swift` - AVFoundation camera QR scanner wrapper
 - `iOS/MemoryQR/MemoryQR/MemoryPayload.swift` - Swift payload create/parse helpers
-- `iOS/MemoryQR/MemoryQR/EncryptedMemoryPayload.swift` - passphrase encryption envelope create/decrypt helpers
+- `iOS/MemoryQR/MemoryQR/EncryptedMemoryPayload.swift` - passphrase encryption envelope create/decrypt helpers with local reader allowlist metadata
 - `iOS/MemoryQR/MemoryQR/MemoryQRDecoder.swift` - scanned text to MemoryQR parser boundary
 - `iOS/MemoryQR/MemoryQR/QRCodeGenerator.swift` - Core Image QR rendering helper
 - `iOS/MemoryQR/MemoryQR/QRImageDecoder.swift` - still-image QR detector
@@ -63,13 +64,13 @@ Do not pretend the app is complete. The current version does not yet include:
 - login or user accounts
 - real whitelist authorization
 
-The iOS app now generates real QR images, can scan/parse plain MemoryQR JSON from the camera or Photos images, and can create/unlock passphrase-encrypted MemoryQR envelopes. Any security language must be precise: passphrase encryption exists, but authentication, whitelist checks, secure sharing, and account-based authorization are planned, not complete.
+The iOS app now generates real QR images, can scan/parse plain MemoryQR JSON from the camera or Photos images, and can create/unlock passphrase-encrypted MemoryQR envelopes. Encrypted envelopes can include local reader allowlist metadata that gates the app decode flow before passphrase decryption. Any security language must be precise: passphrase encryption exists, local reader allowlists are MVP metadata, and authentication, secure whitelist checks, secure sharing, and account-based authorization are planned, not complete.
 
 ## Next Good Tasks
 
 Recommended next implementation steps:
 
-1. Choose an authentication and whitelist approach for authorized decoding.
+1. Design secure account/key-based authorization to replace manually entered local reader IDs.
 2. Design secure attachment support for photos, audio, and video.
 3. Add encrypted attachment reference tests around payload size, invalid payloads, and attachment references.
 4. Review iOS encrypted create/scan UX on a real device.
@@ -85,8 +86,8 @@ Recommended next implementation steps:
 - Verified `xcodebuild build -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -destination 'generic/platform=iOS Simulator' -derivedDataPath /private/tmp/MemoryQR-xcode`.
 - Verified `xcodebuild test -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' -derivedDataPath /private/tmp/MemoryQR-xcode`.
 - Build note: use `/private/tmp` for Xcode DerivedData because the repository lives in `Documents`, where File Provider/Finder metadata can make codesign reject simulator products.
-- Still incomplete: authentication, login, whitelist authorization, encrypted payloads, secure decoding, and real app icon assets.
-- Best next task: design and implement the secure encrypted payload plus authorized decode boundary before adding public sharing.
+- Still incomplete: authentication, login, secure whitelist authorization, account-based decode, and real app icon assets.
+- Best next task: continue from the latest dated session notes below.
 
 ## 2026-05-10 Scan Session Notes
 
@@ -111,6 +112,29 @@ Recommended next implementation steps:
 - Verified `xcodebuild test -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' -derivedDataPath /private/tmp/MemoryQR-xcode`.
 - Still incomplete: login, whitelist authorization, account-based authorized decode, cloud storage, secure sharing, actual media attachment storage, and manual camera testing on a physical iPhone.
 - Best next task: design authorization/whitelist semantics and encrypted attachment references before adding media storage.
+
+## 2026-05-13 Authorized Decode Boundary Session Notes
+
+- Added `authorization` metadata to encrypted envelopes with `passphrase-only` and `local-reader-allowlist` policies.
+- Added JavaScript and Swift decode checks that reject encrypted payload unlocks when the supplied local reader ID is not allowlisted.
+- Added iOS Create controls for optional comma-separated local reader IDs and Scan controls for entering a local reader ID before unlocking allowlisted encrypted QR codes.
+- Documented the boundary in `docs/authorized-decode-boundary.md`: the local reader allowlist is app-level MVP metadata, not login, cloud ACLs, or secure account authorization.
+- Verified `node --test test/*.test.js`.
+- Verified Swift source typechecking with `xcrun --sdk iphonesimulator swiftc -target arm64-apple-ios26.0-simulator -typecheck iOS/MemoryQR/MemoryQR/*.swift`.
+- Could not run the requested full simulator XCTest because Xcode reported CoreSimulator is out of date and no `iPhone 17 Pro Max` simulator destination was available.
+- Still incomplete: login, secure whitelist authorization, account-based authorized decode, cloud storage, secure sharing, actual media attachment storage, and manual camera testing on a physical iPhone.
+- Best next task: replace local reader IDs with signed/key-based recipient authorization, or design encrypted attachment references before adding media storage.
+
+## 2026-05-13 Scan Flow Bugfix Session Notes
+
+- Added explicit Start/Stop controls for camera scanning so the Scan view no longer traps the user in the live camera preview.
+- Photo import now stops the active camera scanner before loading the selected image.
+- Scan status messages now render in a shared status area below Camera Scan and Photo Import, so Photos import failures such as images without QR codes are visible.
+- Added `ScanFlowState` coverage for stopping camera scan on photo import and showing the no-QR image error.
+- Verified `node --test test/*.test.js`.
+- Verified `xcodebuild test -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' -derivedDataPath /private/tmp/MemoryQR-xcode`.
+- Still incomplete: login, secure whitelist authorization, account-based authorized decode, cloud storage, secure sharing, actual media attachment storage, and manual camera testing on a physical iPhone.
+- Best next task: manually re-check Scan UX on a physical iPhone, then continue with signed/key-based recipient authorization or encrypted attachment references.
 
 ## Session Handoff Rule
 

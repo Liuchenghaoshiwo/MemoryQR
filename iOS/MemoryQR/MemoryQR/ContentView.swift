@@ -11,12 +11,18 @@ struct ContentView: View {
         }
     }
 
+    private enum CreateError: Error {
+        case emptyAllowlist
+    }
+
     @State private var selectedMode = Mode.create
     @State private var title = "Beach day"
     @State private var message = "The afternoon light felt golden."
     @State private var shouldEncrypt = false
     @State private var passphrase = ""
     @State private var confirmPassphrase = ""
+    @State private var usesReaderAllowlist = false
+    @State private var allowedReaderIds = ""
     @State private var payload = ""
     @State private var qrImage: UIImage?
     @State private var statusMessage = ""
@@ -92,6 +98,8 @@ struct ContentView: View {
                 } else {
                     passphrase = ""
                     confirmPassphrase = ""
+                    usesReaderAllowlist = false
+                    allowedReaderIds = ""
                     generateQRCode()
                 }
             }
@@ -107,6 +115,30 @@ struct ContentView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Toggle(isOn: $usesReaderAllowlist) {
+                    Label("Limit to local reader IDs", systemImage: "person.badge.key")
+                }
+                .onChange(of: usesReaderAllowlist) {
+                    if usesReaderAllowlist {
+                        clearGeneratedQRCode(status: "Enter allowed local reader IDs, then generate an encrypted QR.")
+                    } else {
+                        allowedReaderIds = ""
+                        clearGeneratedQRCode(status: "Generate again to update the encrypted QR.")
+                    }
+                }
+
+                if usesReaderAllowlist {
+                    TextField("Allowed reader IDs, comma-separated", text: $allowedReaderIds)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("Reader IDs are local MVP metadata for the decode boundary. They are not account identities or cloud authorization.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             if !statusMessage.isEmpty {
@@ -185,7 +217,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Security boundary", systemImage: "lock.shield")
                 .font(.headline)
-            Text(shouldEncrypt ? "This QR is encrypted with your passphrase. Login, whitelist authorization, secure sharing, and media attachments are still future work." : "This QR is not encrypted. Turn on passphrase encryption to create an encrypted MemoryQR. Login, whitelist authorization, and secure sharing are still future work.")
+            Text(shouldEncrypt ? "This QR is encrypted with your passphrase. A local reader allowlist can gate the decode flow, but login, account-based whitelist authorization, secure sharing, and media attachments are still future work." : "This QR is not encrypted. Turn on passphrase encryption to create an encrypted MemoryQR. Login, whitelist authorization, and secure sharing are still future work.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -207,18 +239,45 @@ struct ContentView: View {
                     return
                 }
 
-                payload = try EncryptedMemoryPayload.create(memoryPayload: memoryPayload, passphrase: passphrase)
+                let authorization = try authorizationForCurrentInputs()
+                payload = try EncryptedMemoryPayload.create(
+                    memoryPayload: memoryPayload,
+                    passphrase: passphrase,
+                    authorization: authorization
+                )
             } else {
                 payload = memoryPayload
             }
 
             qrImage = QRCodeGenerator.makeImage(from: payload)
             statusMessage = qrImage == nil ? "QR generation failed." : ""
+        } catch CreateError.emptyAllowlist {
+            clearGeneratedQRCode(status: "Enter at least one allowed local reader ID.")
+        } catch EncryptedMemoryPayload.PayloadError.invalidEnvelope {
+            payload = ""
+            qrImage = nil
+            statusMessage = "Could not create a MemoryQR payload. Reader IDs can use letters, numbers, dots, dashes, underscores, or colons."
         } catch {
             payload = ""
             qrImage = nil
             statusMessage = "Could not create a MemoryQR payload."
         }
+    }
+
+    private func authorizationForCurrentInputs() throws -> EncryptedMemoryPayload.Authorization {
+        guard usesReaderAllowlist else {
+            return .passphraseOnly
+        }
+
+        let readerIds = allowedReaderIds
+            .split(separator: ",")
+            .map(String.init)
+
+        guard !readerIds.isEmpty else {
+            throw CreateError.emptyAllowlist
+        }
+
+        return try .localReaderAllowlist(readerIds)
     }
 
     private func clearGeneratedQRCode(status: String) {

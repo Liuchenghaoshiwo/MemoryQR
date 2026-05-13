@@ -103,6 +103,28 @@ final class MemoryQRDecoderTests: XCTestCase {
         }
     }
 
+    func testDecryptEncryptedPayloadRejectsUnauthorizedLocalReader() throws {
+        let memoryPayload = try MemoryPayload.create(title: "Allowlisted", message: "Local reader gate.")
+        let envelopePayload = try EncryptedMemoryPayload.create(
+            memoryPayload: memoryPayload,
+            passphrase: "right-passphrase",
+            salt: Data((1...16).map(UInt8.init)),
+            nonce: Data((21...32).map(UInt8.init)),
+            iterations: 1000,
+            authorization: try .localReaderAllowlist(["family-phone"])
+        )
+
+        XCTAssertThrowsError(
+            try MemoryQRDecoder.decrypt(
+                envelopePayload,
+                passphrase: "right-passphrase",
+                authorizationContext: .init(localReaderId: "visitor-phone")
+            )
+        ) { error in
+            XCTAssertEqual(error as? MemoryQRDecoder.DecodeError, .unauthorizedReader)
+        }
+    }
+
     func testQRImageDecoderReadsGeneratedMemoryQRImage() throws {
         let payload = try MemoryPayload.create(
             title: "Train window",
@@ -147,5 +169,28 @@ final class MemoryQRDecoderTests: XCTestCase {
         XCTAssertThrowsError(try QRImageDecoder.decode(from: image)) { error in
             XCTAssertEqual(error as? QRImageDecoder.DecodeError, .noQRCodeFound)
         }
+    }
+
+    func testScanFlowStopsCameraWhenPhotoImportBegins() {
+        var state = ScanFlowState()
+        state.startCameraScan()
+
+        state.beginPhotoImport()
+
+        XCTAssertFalse(state.isCameraScanActive)
+        XCTAssertTrue(state.isLoadingPhoto)
+        XCTAssertEqual(state.statusMessage, "Reading selected image...")
+    }
+
+    func testScanFlowShowsNoQRCodePhotoImportError() {
+        var state = ScanFlowState()
+        state.startCameraScan()
+        state.beginPhotoImport()
+
+        state.failPhotoImportNoQRCode()
+
+        XCTAssertFalse(state.isCameraScanActive)
+        XCTAssertFalse(state.isLoadingPhoto)
+        XCTAssertEqual(state.statusMessage, "No QR code was found in that image.")
     }
 }

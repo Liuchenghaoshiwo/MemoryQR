@@ -6,6 +6,7 @@ enum MemoryQRDecoder {
         case unsupportedSchema
         case emptyPassphrase
         case decryptionFailed
+        case unauthorizedReader
     }
 
     enum DecodeResult: Equatable {
@@ -37,11 +38,21 @@ enum MemoryQRDecoder {
         }
     }
 
-    static func decrypt(_ envelopePayload: String, passphrase: String) throws -> MemoryPayload.Memory {
+    static func decrypt(
+        _ envelopePayload: String,
+        passphrase: String,
+        authorizationContext: EncryptedMemoryPayload.AuthorizationContext = .init()
+    ) throws -> MemoryPayload.Memory {
         do {
-            return try EncryptedMemoryPayload.decrypt(envelopePayload, passphrase: passphrase)
+            return try EncryptedMemoryPayload.decrypt(
+                envelopePayload,
+                passphrase: passphrase,
+                authorizationContext: authorizationContext
+            )
         } catch EncryptedMemoryPayload.PayloadError.emptyPassphrase {
             throw DecodeError.emptyPassphrase
+        } catch EncryptedMemoryPayload.PayloadError.unauthorizedReader {
+            throw DecodeError.unauthorizedReader
         } catch EncryptedMemoryPayload.PayloadError.unsupportedSchema {
             throw DecodeError.unsupportedSchema
         } catch EncryptedMemoryPayload.PayloadError.unsupportedAlgorithm {
