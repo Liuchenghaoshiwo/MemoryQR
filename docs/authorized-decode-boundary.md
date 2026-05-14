@@ -1,10 +1,20 @@
 # Authorized Decode Boundary MVP
 
-MemoryQR now supports a local-first authorization boundary for encrypted QR payloads. This is an MVP decode gate, not a login system or cloud whitelist.
+MemoryQR now supports a local-first authorization boundary for plain and encrypted QR payloads. This is an MVP app-level decode gate, not a login system or cloud whitelist.
 
-## Envelope Metadata
+## Metadata
 
-Encrypted envelopes include an `authorization` object:
+Plain MemoryQR payloads can include a local reader allowlist:
+
+```json
+{
+  "mode": "local-reader",
+  "policy": "local-reader-allowlist",
+  "allowedReaderIds": ["family-phone"]
+}
+```
+
+Encrypted envelopes can include their own authorization object:
 
 ```json
 {
@@ -14,7 +24,7 @@ Encrypted envelopes include an `authorization` object:
 }
 ```
 
-Supported policies:
+Supported encrypted policies:
 
 - `passphrase-only`: any scanner with the passphrase can attempt decryption.
 - `local-reader-allowlist`: the scanner must provide a matching local reader ID before passphrase decryption is attempted.
@@ -24,18 +34,19 @@ Reader IDs are normalized to lowercase and may contain letters, numbers, dots, d
 ## Decode Flow
 
 1. Inspect the QR payload.
-2. If the payload is plain MemoryQR JSON, parse it directly.
-3. If the payload is encrypted, inspect the envelope authorization metadata.
-4. If the policy is `local-reader-allowlist`, compare the supplied local reader ID with `allowedReaderIds`.
-5. If the local reader is authorized, derive the passphrase key and decrypt the payload.
+2. If the payload is plain MemoryQR JSON and has no local reader allowlist, parse it directly.
+3. If the plain payload has `local-reader-allowlist`, compare the supplied local reader ID with `allowedReaderIds` before showing it in the app.
+4. If the payload is encrypted, inspect the envelope authorization metadata.
+5. If the encrypted policy is `local-reader-allowlist`, compare the supplied local reader ID with `allowedReaderIds`.
+6. If the local reader is authorized, derive the passphrase key and decrypt the payload.
 
-The authorization metadata is included in AES-GCM authenticated data for new encrypted envelopes, so tampering with the policy or allowlist makes decryption fail.
+Encrypted envelope authorization metadata is included in AES-GCM authenticated data for new encrypted envelopes, so tampering with the encrypted policy or allowlist makes decryption fail. Plain payload authorization metadata is not cryptographically protected by itself.
 
 ## Security Boundary
 
-This MVP does not prove a reader's identity. The local reader ID is manually supplied app state, and the allowlist is visible in the QR envelope metadata.
+This MVP does not prove a reader's identity. The local reader ID is manually supplied app state, and the allowlist is visible in the QR payload metadata.
 
-The cryptographic privacy boundary is still the passphrase. The local allowlist is useful as an app-level decode boundary and a stable contract for future account or key-based authorization, but it should not be described as secure whitelist authorization.
+The cryptographic privacy boundary is still the passphrase. If a QR is not encrypted, its title and message remain directly readable to anyone who reads the raw QR payload, even when the app asks for a matching local reader ID before displaying it. The local allowlist is useful as an app-level decode boundary and a stable contract for future account or key-based authorization, but it should not be described as secure whitelist authorization.
 
 ## Future Direction
 

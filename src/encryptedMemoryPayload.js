@@ -6,11 +6,18 @@ const KDF = "PBKDF2-HMAC-SHA256";
 const AUTHORIZATION_MODE = "local-passphrase";
 const AUTHORIZATION_POLICY_PASSPHRASE_ONLY = "passphrase-only";
 const AUTHORIZATION_POLICY_LOCAL_READER_ALLOWLIST = "local-reader-allowlist";
+const ATTACHMENT_STORAGE_KIND_LOCAL_ENCRYPTED_BUNDLE = "local-encrypted-bundle";
 const DEFAULT_ITERATIONS = 210000;
 const SALT_BYTES = 16;
 const NONCE_BYTES = 12;
 const GCM_TAG_BYTES = 16;
+const MAX_ATTACHMENTS = 8;
+const MAX_ATTACHMENT_REFERENCES_BYTES = 2048;
+const MAX_ENCRYPTED_BUNDLE_REF_LENGTH = 512;
 const READER_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,63}$/u;
+const ENCRYPTED_BUNDLE_REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/?#@!$&'()*+,;=%~-]{0,511}$/u;
+const ATTACHMENT_TYPES = new Set(["image", "audio", "video"]);
+const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -23,6 +30,7 @@ export async function createEncryptedMemoryPayload({
   nonce = randomBytes(NONCE_BYTES),
   iterations = DEFAULT_ITERATIONS,
   authorization,
+  attachments = [],
 }) {
   assertPassphrase(passphrase);
   parseMemoryPayload(memoryPayload);
@@ -45,6 +53,7 @@ export async function createEncryptedMemoryPayload({
     nonce: bytesToBase64Url(nonceBytes),
     createdAt: normalizeText(createdAt, new Date().toISOString()),
     authorization: normalizeAuthorization(authorization),
+    attachments: normalizeAttachmentReferences(attachments),
   };
   const key = await deriveKey(passphrase, saltBytes, iterations, ["encrypt"]);
   const ciphertext = await webCrypto().subtle.encrypt(
@@ -78,7 +87,9 @@ export function parseEncryptedMemoryEnvelope(payload) {
   }
 
   const hasAuthorization = Object.prototype.hasOwnProperty.call(envelope, "authorization");
+  const hasAttachments = Object.prototype.hasOwnProperty.call(envelope, "attachments");
   const authorization = normalizeAuthorization(envelope.authorization);
+  const attachments = normalizeAttachmentReferences(envelope.attachments);
 
   if (
     envelope.alg !== ALGORITHM ||
@@ -111,10 +122,15 @@ export function parseEncryptedMemoryEnvelope(payload) {
     ciphertext: envelope.ciphertext,
     createdAt: envelope.createdAt,
     authorization,
+    attachments,
   };
 
   Object.defineProperty(parsedEnvelope, "usesLegacyAuthenticatedData", {
     value: !hasAuthorization,
+    enumerable: false,
+  });
+  Object.defineProperty(parsedEnvelope, "usesLegacyAttachmentAuthenticatedData", {
+    value: !hasAttachments,
     enumerable: false,
   });
   return parsedEnvelope;
@@ -193,6 +209,9 @@ function authenticatedData(envelope) {
 
   if (!envelope.usesLegacyAuthenticatedData) {
     metadata.authorization = envelope.authorization;
+  }
+  if (!envelope.usesLegacyAttachmentAuthenticatedData) {
+    metadata.attachments = envelope.attachments ?? [];
   }
 
   return textEncoder.encode(JSON.stringify(metadata));
@@ -281,6 +300,110 @@ function normalizeAllowedReaderIds(value) {
     }
   }
   return normalizedReaderIds;
+}
+
+function normalizeAttachmentReferences(value) {
+  if (value == null) {
+    return [];
+  }
+  if (!Array.isArray(value) || value.length > MAX_ATTACHMENTS) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+
+  const seen = new Set();
+  const attachments = value.map((attachment) => {
+    const normalized = normalizeAttachmentReference(attachment);
+    if (seen.has(normalized.id)) {
+      throw new Error("Invalid encrypted MemoryQR envelope.");
+    }
+    seen.add(normalized.id);
+    return normalized;
+  });
+
+  if (textEncoder.encode(JSON.stringify(attachments)).byteLength > MAX_ATTACHMENT_REFERENCES_BYTES) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+  return attachments;
+}
+
+function normalizeAttachmentReference(value) {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+  assertAllowedKeys(value, ["id", "type", "size", "sha256", "storage"]);
+
+  return {
+    id: normalizeAttachmentId(value.id),
+    type: normalizeAttachmentType(value.type),
+    size: normalizeAttachmentSize(value.size),
+    sha256: normalizeSha256(value.sha256),
+    storage: normalizeAttachmentStorage(value.storage),
+  };
+}
+
+function normalizeAttachmentStorage(value) {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+  assertAllowedKeys(value, ["kind", "encryptedBundleRef"]);
+
+  const kind = normalizeText(value.kind, "");
+  if (kind !== ATTACHMENT_STORAGE_KIND_LOCAL_ENCRYPTED_BUNDLE) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+
+  return {
+    kind,
+    encryptedBundleRef: normalizeEncryptedBundleRef(value.encryptedBundleRef),
+  };
+}
+
+function normalizeAttachmentId(value) {
+  return normalizeReaderId(value);
+}
+
+function normalizeAttachmentType(value) {
+  const normalized = normalizeText(value, "").toLowerCase();
+  if (!ATTACHMENT_TYPES.has(normalized)) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+  return normalized;
+}
+
+function normalizeAttachmentSize(value) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+  return value;
+}
+
+function normalizeSha256(value) {
+  const normalized = normalizeText(value, "").toLowerCase();
+  if (!SHA256_PATTERN.test(normalized)) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+  return normalized;
+}
+
+function normalizeEncryptedBundleRef(value) {
+  const normalized = normalizeText(value, "");
+  if (
+    normalized.length === 0 ||
+    normalized.length > MAX_ENCRYPTED_BUNDLE_REF_LENGTH ||
+    !ENCRYPTED_BUNDLE_REF_PATTERN.test(normalized)
+  ) {
+    throw new Error("Invalid encrypted MemoryQR envelope.");
+  }
+  return normalized;
+}
+
+function assertAllowedKeys(value, allowedKeys) {
+  const allowed = new Set(allowedKeys);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      throw new Error("Invalid encrypted MemoryQR envelope.");
+    }
+  }
 }
 
 function assertAuthorizedToDecode(authorization, authorizationContext) {

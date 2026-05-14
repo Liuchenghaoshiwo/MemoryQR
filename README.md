@@ -20,9 +20,15 @@ The app is designed to run as a static site and deploy through GitHub Pages.
 - Camera QR scanning with AVFoundation
 - QR image import and parsing from Photos
 - Passphrase-encrypted QR payload creation and recovery in the iOS app
-- Local reader allowlist metadata for encrypted QR decode gating
+- Local reader allowlist metadata for app-level QR decode gating
+- Attachment reference metadata for photos, audio, and video bundles
+- Manual iOS entry and scan display for attachment reference metadata
 
-The iOS app can encrypt a memory payload with a user-entered passphrase and unlock it later with the same passphrase. Encrypted envelopes can also declare a local reader allowlist, which gates the app's decode flow before passphrase decryption. This is not account authentication or real cloud authorization; authentication, secure whitelist authorization, cloud sync, secure sharing, and media attachments are still planned work.
+The iOS app can encrypt a memory payload with a user-entered passphrase and unlock it later with the same passphrase. Passphrase encryption, local reader IDs, and attachment references are independent controls: plain MemoryQR payloads can declare a local reader allowlist and small attachment references, while encrypted envelopes can also carry the same reader and attachment metadata around encrypted memory text. Attachment references include an id, media type, byte size, SHA-256 digest, local encrypted bundle storage kind, and encrypted bundle reference. Media bytes are not stored in the QR code.
+
+Local reader allowlists are app-level MVP metadata. If a QR is not encrypted, its title and message are still visible to anyone who reads the QR payload directly, even if the app asks for a matching local reader ID before displaying it.
+
+This is not account authentication, real cloud authorization, or media storage. Authentication, secure whitelist authorization, cloud sync, secure sharing, encrypted bundle storage, and attachment import/export UX are still planned work.
 
 See [`docs/authorized-decode-boundary.md`](docs/authorized-decode-boundary.md) for the current authorization boundary.
 
@@ -30,7 +36,7 @@ See [`docs/authorized-decode-boundary.md`](docs/authorized-decode-boundary.md) f
 
 - Generate real QR codes from memory payloads
 - Replace the local reader allowlist MVP with real authentication and secure whitelist authorization
-- Add secure attachment support for photos, audio, and video
+- Add secure local encrypted bundle storage for referenced photos, audio, and video
 - Add export and download options
 - Explore local-first storage for private memories
 

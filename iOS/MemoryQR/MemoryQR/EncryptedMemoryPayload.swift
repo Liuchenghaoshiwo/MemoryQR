@@ -11,11 +11,18 @@ enum EncryptedMemoryPayload {
     private static let authorizationMode = "local-passphrase"
     private static let passphraseOnlyPolicy = "passphrase-only"
     private static let localReaderAllowlistPolicy = "local-reader-allowlist"
+    private static let localEncryptedBundleStorageKind = "local-encrypted-bundle"
     private static let defaultIterations = 210_000
     private static let saltByteCount = 16
     private static let nonceByteCount = 12
     private static let tagByteCount = 16
+    private static let maxAttachments = 8
+    private static let maxAttachmentReferencesByteCount = 2048
+    private static let maxEncryptedBundleRefLength = 512
     private static let readerIdPattern = #"^[a-z0-9][a-z0-9._:-]{0,63}$"#
+    private static let encryptedBundleRefPattern = #"^[A-Za-z0-9][A-Za-z0-9._:/?#@!$&'()*+,;=%~-]{0,511}$"#
+    private static let sha256Pattern = #"^[a-f0-9]{64}$"#
+    private static let attachmentTypes = Set(["image", "audio", "video"])
 
     enum PayloadError: Error, Equatable {
         case emptyPassphrase
@@ -165,6 +172,174 @@ enum EncryptedMemoryPayload {
         }
     }
 
+    struct AttachmentReference: Codable, Equatable {
+        let id: String
+        let type: String
+        let size: Int
+        let sha256: String
+        let storage: AttachmentStorage
+
+        fileprivate var authenticatedJSONString: String {
+            """
+            {"id":"\(id)","type":"\(type)","size":\(size),"sha256":"\(sha256)","storage":\(storage.authenticatedJSONString)}
+            """
+        }
+
+        static func localEncryptedBundle(
+            id: String,
+            type: String,
+            size: Int,
+            sha256: String,
+            encryptedBundleRef: String
+        ) throws -> AttachmentReference {
+            try AttachmentReference(
+                id: id,
+                type: type,
+                size: size,
+                sha256: sha256,
+                storage: .localEncryptedBundle(encryptedBundleRef)
+            )
+        }
+
+        private init(
+            id: String,
+            type: String,
+            size: Int,
+            sha256: String,
+            storage: AttachmentStorage
+        ) throws {
+            self.id = try Self.normalizeAttachmentId(id)
+            self.type = try Self.normalizeAttachmentType(type)
+            self.size = try Self.normalizeAttachmentSize(size)
+            self.sha256 = try Self.normalizeSHA256(sha256)
+            self.storage = storage
+        }
+
+        init(from decoder: Decoder) throws {
+            try EncryptedMemoryPayload.rejectUnknownKeys(
+                from: decoder,
+                allowedKeys: ["id", "type", "size", "sha256", "storage"]
+            )
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self = try AttachmentReference(
+                id: container.decode(String.self, forKey: .id),
+                type: container.decode(String.self, forKey: .type),
+                size: container.decode(Int.self, forKey: .size),
+                sha256: container.decode(String.self, forKey: .sha256),
+                storage: container.decode(AttachmentStorage.self, forKey: .storage)
+            )
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(id, forKey: .id)
+            try container.encode(type, forKey: .type)
+            try container.encode(size, forKey: .size)
+            try container.encode(sha256, forKey: .sha256)
+            try container.encode(storage, forKey: .storage)
+        }
+
+        private static func normalizeAttachmentId(_ value: String) throws -> String {
+            try Authorization.localReaderAllowlist([value]).allowedReaderIds[0]
+        }
+
+        private static func normalizeAttachmentType(_ value: String) throws -> String {
+            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard EncryptedMemoryPayload.attachmentTypes.contains(normalized) else {
+                throw PayloadError.invalidEnvelope
+            }
+            return normalized
+        }
+
+        private static func normalizeAttachmentSize(_ value: Int) throws -> Int {
+            guard value > 0 else {
+                throw PayloadError.invalidEnvelope
+            }
+            return value
+        }
+
+        private static func normalizeSHA256(_ value: String) throws -> String {
+            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard normalized.range(
+                of: EncryptedMemoryPayload.sha256Pattern,
+                options: .regularExpression
+            ) != nil else {
+                throw PayloadError.invalidEnvelope
+            }
+            return normalized
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case type
+            case size
+            case sha256
+            case storage
+        }
+    }
+
+    struct AttachmentStorage: Codable, Equatable {
+        let kind: String
+        let encryptedBundleRef: String
+
+        fileprivate var authenticatedJSONString: String {
+            """
+            {"kind":"\(kind)","encryptedBundleRef":"\(encryptedBundleRef)"}
+            """
+        }
+
+        static func localEncryptedBundle(_ encryptedBundleRef: String) throws -> AttachmentStorage {
+            try AttachmentStorage(
+                kind: EncryptedMemoryPayload.localEncryptedBundleStorageKind,
+                encryptedBundleRef: encryptedBundleRef
+            )
+        }
+
+        private init(kind: String, encryptedBundleRef: String) throws {
+            guard kind == EncryptedMemoryPayload.localEncryptedBundleStorageKind else {
+                throw PayloadError.invalidEnvelope
+            }
+            self.kind = kind
+            self.encryptedBundleRef = try Self.normalizeEncryptedBundleRef(encryptedBundleRef)
+        }
+
+        init(from decoder: Decoder) throws {
+            try EncryptedMemoryPayload.rejectUnknownKeys(
+                from: decoder,
+                allowedKeys: ["kind", "encryptedBundleRef"]
+            )
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self = try AttachmentStorage(
+                kind: container.decode(String.self, forKey: .kind),
+                encryptedBundleRef: container.decode(String.self, forKey: .encryptedBundleRef)
+            )
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(kind, forKey: .kind)
+            try container.encode(encryptedBundleRef, forKey: .encryptedBundleRef)
+        }
+
+        private static func normalizeEncryptedBundleRef(_ value: String) throws -> String {
+            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalized.isEmpty,
+                  normalized.count <= EncryptedMemoryPayload.maxEncryptedBundleRefLength,
+                  normalized.range(
+                      of: EncryptedMemoryPayload.encryptedBundleRefPattern,
+                      options: .regularExpression
+                  ) != nil else {
+                throw PayloadError.invalidEnvelope
+            }
+            return normalized
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case kind
+            case encryptedBundleRef
+        }
+    }
+
     struct Envelope: Codable, Equatable {
         let schema: String
         let alg: String
@@ -175,7 +350,9 @@ enum EncryptedMemoryPayload {
         let ciphertext: String
         let createdAt: String
         let authorization: Authorization
+        let attachments: [AttachmentReference]
         fileprivate let usesLegacyAuthenticatedData: Bool
+        fileprivate let usesLegacyAttachmentAuthenticatedData: Bool
 
         init(
             schema: String,
@@ -187,7 +364,9 @@ enum EncryptedMemoryPayload {
             ciphertext: String,
             createdAt: String,
             authorization: Authorization,
-            usesLegacyAuthenticatedData: Bool = false
+            attachments: [AttachmentReference],
+            usesLegacyAuthenticatedData: Bool = false,
+            usesLegacyAttachmentAuthenticatedData: Bool = false
         ) {
             self.schema = schema
             self.alg = alg
@@ -198,7 +377,9 @@ enum EncryptedMemoryPayload {
             self.ciphertext = ciphertext
             self.createdAt = createdAt
             self.authorization = authorization
+            self.attachments = attachments
             self.usesLegacyAuthenticatedData = usesLegacyAuthenticatedData
+            self.usesLegacyAttachmentAuthenticatedData = usesLegacyAttachmentAuthenticatedData
         }
 
         init(from decoder: Decoder) throws {
@@ -219,6 +400,16 @@ enum EncryptedMemoryPayload {
                 authorization = .passphraseOnly
                 usesLegacyAuthenticatedData = true
             }
+
+            if container.contains(.attachments) {
+                attachments = try EncryptedMemoryPayload.validateAttachmentReferences(
+                    container.decode([AttachmentReference].self, forKey: .attachments)
+                )
+                usesLegacyAttachmentAuthenticatedData = false
+            } else {
+                attachments = []
+                usesLegacyAttachmentAuthenticatedData = true
+            }
         }
 
         func encode(to encoder: Encoder) throws {
@@ -232,6 +423,7 @@ enum EncryptedMemoryPayload {
             try container.encode(ciphertext, forKey: .ciphertext)
             try container.encode(createdAt, forKey: .createdAt)
             try container.encode(authorization, forKey: .authorization)
+            try container.encode(attachments, forKey: .attachments)
         }
 
         private enum CodingKeys: String, CodingKey {
@@ -244,13 +436,15 @@ enum EncryptedMemoryPayload {
             case ciphertext
             case createdAt
             case authorization
+            case attachments
         }
     }
 
     static func create(
         memoryPayload: String,
         passphrase: String,
-        authorization: Authorization = .passphraseOnly
+        authorization: Authorization = .passphraseOnly,
+        attachments: [AttachmentReference] = []
     ) throws -> String {
         try create(
             memoryPayload: memoryPayload,
@@ -259,7 +453,8 @@ enum EncryptedMemoryPayload {
             salt: randomData(byteCount: saltByteCount),
             nonce: randomData(byteCount: nonceByteCount),
             iterations: defaultIterations,
-            authorization: authorization
+            authorization: authorization,
+            attachments: attachments
         )
     }
 
@@ -270,10 +465,12 @@ enum EncryptedMemoryPayload {
         salt: Data,
         nonce: Data,
         iterations: Int = defaultIterations,
-        authorization: Authorization = .passphraseOnly
+        authorization: Authorization = .passphraseOnly,
+        attachments: [AttachmentReference] = []
     ) throws -> String {
         try validatePassphrase(passphrase)
         _ = try MemoryPayload.parse(memoryPayload)
+        let normalizedAttachments = try validateAttachmentReferences(attachments)
 
         guard salt.count == saltByteCount,
               nonce.count == nonceByteCount,
@@ -290,7 +487,8 @@ enum EncryptedMemoryPayload {
             salt: salt.base64URLEncodedString(),
             nonce: nonce.base64URLEncodedString(),
             createdAt: createdAt,
-            authorization: authorization
+            authorization: authorization,
+            attachments: normalizedAttachments
         )
         let key = try deriveKey(passphrase: passphrase, salt: salt, iterations: iterations)
         let aesNonce = try AES.GCM.Nonce(data: nonce)
@@ -311,7 +509,8 @@ enum EncryptedMemoryPayload {
             nonce: metadata.nonce,
             ciphertext: encryptedBytes.base64URLEncodedString(),
             createdAt: metadata.createdAt,
-            authorization: metadata.authorization
+            authorization: metadata.authorization,
+            attachments: metadata.attachments
         )
 
         let encoder = JSONEncoder()
@@ -410,6 +609,40 @@ enum EncryptedMemoryPayload {
         }
     }
 
+    private static func validateAttachmentReferences(
+        _ attachments: [AttachmentReference]
+    ) throws -> [AttachmentReference] {
+        guard attachments.count <= maxAttachments else {
+            throw PayloadError.invalidEnvelope
+        }
+
+        var seen = Set<String>()
+        for attachment in attachments {
+            guard !seen.contains(attachment.id) else {
+                throw PayloadError.invalidEnvelope
+            }
+            seen.insert(attachment.id)
+        }
+
+        guard Data(attachmentsAuthenticatedJSONString(attachments).utf8).count <= maxAttachmentReferencesByteCount else {
+            throw PayloadError.invalidEnvelope
+        }
+        return attachments
+    }
+
+    fileprivate static func attachmentsAuthenticatedJSONString(_ attachments: [AttachmentReference]) -> String {
+        let attachmentJSON = attachments.map(\.authenticatedJSONString).joined(separator: ",")
+        return "[\(attachmentJSON)]"
+    }
+
+    private static func rejectUnknownKeys(from decoder: Decoder, allowedKeys: Set<String>) throws {
+        let container = try decoder.container(keyedBy: AnyCodingKey.self)
+        let decodedKeys = Set(container.allKeys.map(\.stringValue))
+        guard decodedKeys.isSubset(of: allowedKeys) else {
+            throw PayloadError.invalidEnvelope
+        }
+    }
+
     private static func validatePassphrase(_ passphrase: String) throws {
         if passphrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw PayloadError.emptyPassphrase
@@ -468,7 +701,9 @@ private struct EnvelopeMetadata {
     let nonce: String
     let createdAt: String
     let authorization: EncryptedMemoryPayload.Authorization
+    let attachments: [EncryptedMemoryPayload.AttachmentReference]
     let usesLegacyAuthenticatedData: Bool
+    let usesLegacyAttachmentAuthenticatedData: Bool
 
     init(
         schema: String,
@@ -479,7 +714,9 @@ private struct EnvelopeMetadata {
         nonce: String,
         createdAt: String,
         authorization: EncryptedMemoryPayload.Authorization,
-        usesLegacyAuthenticatedData: Bool = false
+        attachments: [EncryptedMemoryPayload.AttachmentReference],
+        usesLegacyAuthenticatedData: Bool = false,
+        usesLegacyAttachmentAuthenticatedData: Bool = false
     ) {
         self.schema = schema
         self.alg = alg
@@ -489,7 +726,9 @@ private struct EnvelopeMetadata {
         self.nonce = nonce
         self.createdAt = createdAt
         self.authorization = authorization
+        self.attachments = attachments
         self.usesLegacyAuthenticatedData = usesLegacyAuthenticatedData
+        self.usesLegacyAttachmentAuthenticatedData = usesLegacyAttachmentAuthenticatedData
     }
 
     init(envelope: EncryptedMemoryPayload.Envelope) {
@@ -502,7 +741,9 @@ private struct EnvelopeMetadata {
             nonce: envelope.nonce,
             createdAt: envelope.createdAt,
             authorization: envelope.authorization,
-            usesLegacyAuthenticatedData: envelope.usesLegacyAuthenticatedData
+            attachments: envelope.attachments,
+            usesLegacyAuthenticatedData: envelope.usesLegacyAuthenticatedData,
+            usesLegacyAttachmentAuthenticatedData: envelope.usesLegacyAttachmentAuthenticatedData
         )
     }
 
@@ -512,13 +753,32 @@ private struct EnvelopeMetadata {
             metadataJSON = """
             {"schema":"\(schema)","alg":"\(alg)","kdf":"\(kdf)","iterations":\(iterations),"salt":"\(salt)","nonce":"\(nonce)","createdAt":"\(createdAt)"}
             """
-        } else {
+        } else if usesLegacyAttachmentAuthenticatedData {
             metadataJSON = """
             {"schema":"\(schema)","alg":"\(alg)","kdf":"\(kdf)","iterations":\(iterations),"salt":"\(salt)","nonce":"\(nonce)","createdAt":"\(createdAt)","authorization":\(authorization.authenticatedJSONString)}
+            """
+        } else {
+            metadataJSON = """
+            {"schema":"\(schema)","alg":"\(alg)","kdf":"\(kdf)","iterations":\(iterations),"salt":"\(salt)","nonce":"\(nonce)","createdAt":"\(createdAt)","authorization":\(authorization.authenticatedJSONString),"attachments":\(EncryptedMemoryPayload.attachmentsAuthenticatedJSONString(attachments))}
             """
         }
 
         return Data(metadataJSON.utf8)
+    }
+}
+
+private struct AnyCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int?
+
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+        intValue = nil
+    }
+
+    init?(intValue: Int) {
+        stringValue = String(intValue)
+        self.intValue = intValue
     }
 }
 

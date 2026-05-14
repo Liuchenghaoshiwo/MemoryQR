@@ -70,6 +70,83 @@ test("createEncryptedMemoryPayload can declare a local reader allowlist", async 
   });
 });
 
+test("createEncryptedMemoryPayload can declare encrypted attachment references", async () => {
+  const memoryPayload = createMemoryPayload({
+    title: "Anniversary album",
+    message: "The QR points to a local encrypted photo bundle.",
+    createdAt: "2026-05-14T08:00:00.000Z",
+  });
+
+  const envelopePayload = await createEncryptedMemoryPayload({
+    memoryPayload,
+    passphrase: "album-passphrase",
+    createdAt: "2026-05-14T08:01:00.000Z",
+    salt,
+    nonce,
+    iterations: 1000,
+    attachments: [
+      {
+        id: " Cover.Photo ",
+        type: "image",
+        size: 245760,
+        sha256: "A".repeat(64),
+        storage: {
+          kind: "local-encrypted-bundle",
+          encryptedBundleRef: "memoryqr-local-bundle://anniversary-2026/cover-photo",
+        },
+      },
+    ],
+  });
+
+  const envelope = parseEncryptedMemoryEnvelope(envelopePayload);
+  assert.deepEqual(envelope.attachments, [
+    {
+      id: "cover.photo",
+      type: "image",
+      size: 245760,
+      sha256: "a".repeat(64),
+      storage: {
+        kind: "local-encrypted-bundle",
+        encryptedBundleRef: "memoryqr-local-bundle://anniversary-2026/cover-photo",
+      },
+    },
+  ]);
+});
+
+test("attachment references are authenticated with the encrypted envelope metadata", async () => {
+  const memoryPayload = createMemoryPayload({
+    title: "Voice note",
+    message: "The bundle reference must not be rewritten.",
+  });
+  const envelopePayload = await createEncryptedMemoryPayload({
+    memoryPayload,
+    passphrase: "voice-passphrase",
+    salt,
+    nonce,
+    iterations: 1000,
+    attachments: [
+      {
+        id: "voice-1",
+        type: "audio",
+        size: 4096,
+        sha256: "b".repeat(64),
+        storage: {
+          kind: "local-encrypted-bundle",
+          encryptedBundleRef: "memoryqr-local-bundle://voice-notes/voice-1",
+        },
+      },
+    ],
+  });
+  const tamperedEnvelope = JSON.parse(envelopePayload);
+  tamperedEnvelope.attachments[0].storage.encryptedBundleRef =
+    "memoryqr-local-bundle://voice-notes/rewritten";
+
+  await assert.rejects(
+    () => decryptEncryptedMemoryPayload(JSON.stringify(tamperedEnvelope), "voice-passphrase"),
+    /Could not decrypt encrypted MemoryQR payload/,
+  );
+});
+
 test("decryptEncryptedMemoryPayload recovers memory with correct passphrase", async () => {
   const memoryPayload = createMemoryPayload({
     title: "Garden",
@@ -197,6 +274,63 @@ test("parseEncryptedMemoryEnvelope rejects malformed envelopes", () => {
             policy: "local-reader-allowlist",
             allowedReaderIds: ["family-phone"],
           },
+        }),
+      ),
+    /Invalid encrypted MemoryQR envelope/,
+  );
+});
+
+test("parseEncryptedMemoryEnvelope rejects invalid attachment references", async () => {
+  const memoryPayload = createMemoryPayload({ title: "A", message: "B" });
+
+  await assert.rejects(
+    () =>
+      createEncryptedMemoryPayload({
+        memoryPayload,
+        passphrase: "attachment-passphrase",
+        salt,
+        nonce,
+        attachments: [
+          {
+            id: "inline-media",
+            type: "image",
+            size: 1,
+            sha256: "c".repeat(64),
+            data: "base64-media-does-not-belong-in-the-qr",
+            storage: {
+              kind: "local-encrypted-bundle",
+              encryptedBundleRef: "memoryqr-local-bundle://inline-media",
+            },
+          },
+        ],
+      }),
+    /Invalid encrypted MemoryQR envelope/,
+  );
+
+  assert.throws(
+    () =>
+      parseEncryptedMemoryEnvelope(
+        JSON.stringify({
+          schema: "memoryqr.encrypted.v1",
+          alg: "AES-256-GCM",
+          kdf: "PBKDF2-HMAC-SHA256",
+          iterations: 1000,
+          salt: "AQIDBAUGBwgJCgsMDQ4PEA",
+          nonce: "FRYXGBkaGxwdHh8g",
+          ciphertext: "abcdefghijklmnopqrstuvwxyz",
+          createdAt: "2026-05-14T08:01:00.000Z",
+          attachments: [
+            {
+              id: "video-1",
+              type: "video",
+              size: 1024,
+              sha256: "not-a-sha",
+              storage: {
+                kind: "local-encrypted-bundle",
+                encryptedBundleRef: "memoryqr-local-bundle://video-1",
+              },
+            },
+          ],
         }),
       ),
     /Invalid encrypted MemoryQR envelope/,

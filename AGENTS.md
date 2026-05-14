@@ -20,17 +20,18 @@ The goal is to build a small tool that lets people store personal memories in QR
 - `index.html` - static app shell and public preview page
 - `src/styles.css` - visual design and responsive layout
 - `src/app.js` - browser-side demo behavior
-- `src/memoryPayload.js` - memory payload create/parse helpers
-- `src/encryptedMemoryPayload.js` - passphrase encrypted payload envelope and local authorization metadata helpers
+- `src/memoryPayload.js` - memory payload create/parse helpers with optional local reader allowlist and attachment reference metadata
+- `src/encryptedMemoryPayload.js` - passphrase encrypted payload envelope, local authorization metadata helpers, and encrypted attachment reference metadata validation
 - `test/memoryPayload.test.js` - payload contract tests
 - `test/encryptedMemoryPayload.test.js` - encrypted payload contract tests
 - `docs/authorized-decode-boundary.md` - local authorized decode boundary notes
 - `iOS/MemoryQR/MemoryQR.xcodeproj` - native iOS Xcode project
 - `iOS/MemoryQR/MemoryQR/ContentView.swift` - SwiftUI memory entry, QR preview, and save flow
+- `iOS/MemoryQR/MemoryQR/AttachmentReferenceDraft.swift` - iOS manual encrypted attachment reference form model
 - `iOS/MemoryQR/MemoryQR/ScanView.swift` - camera scan, Photos import, result display, and scan errors
 - `iOS/MemoryQR/MemoryQR/CameraScannerView.swift` - AVFoundation camera QR scanner wrapper
-- `iOS/MemoryQR/MemoryQR/MemoryPayload.swift` - Swift payload create/parse helpers
-- `iOS/MemoryQR/MemoryQR/EncryptedMemoryPayload.swift` - passphrase encryption envelope create/decrypt helpers with local reader allowlist metadata
+- `iOS/MemoryQR/MemoryQR/MemoryPayload.swift` - Swift payload create/parse helpers with optional local reader allowlist and attachment reference metadata
+- `iOS/MemoryQR/MemoryQR/EncryptedMemoryPayload.swift` - passphrase encryption envelope create/decrypt helpers with local reader allowlist and encrypted attachment reference metadata
 - `iOS/MemoryQR/MemoryQR/MemoryQRDecoder.swift` - scanned text to MemoryQR parser boundary
 - `iOS/MemoryQR/MemoryQR/QRCodeGenerator.swift` - Core Image QR rendering helper
 - `iOS/MemoryQR/MemoryQR/QRImageDecoder.swift` - still-image QR detector
@@ -52,7 +53,7 @@ The eventual app should let users:
 
 Privacy matters. Prefer local-first behavior unless the user explicitly asks for accounts, cloud sync, or sharing services.
 
-Media note: do not store large images, audio, or video directly inside QR codes. QR codes should carry a small encrypted envelope, content hashes, and authorized references to encrypted local bundles or backend/iCloud storage.
+Media note: do not store large images, audio, or video directly inside QR codes. QR codes should carry only small attachment reference metadata, content hashes, and references to encrypted local bundles or future backend/iCloud storage. Those references may appear in plain payloads or encrypted envelopes depending on the user's independent encryption setting.
 
 ## Current Non-Goals
 
@@ -64,15 +65,15 @@ Do not pretend the app is complete. The current version does not yet include:
 - login or user accounts
 - real whitelist authorization
 
-The iOS app now generates real QR images, can scan/parse plain MemoryQR JSON from the camera or Photos images, and can create/unlock passphrase-encrypted MemoryQR envelopes. Encrypted envelopes can include local reader allowlist metadata that gates the app decode flow before passphrase decryption. Any security language must be precise: passphrase encryption exists, local reader allowlists are MVP metadata, and authentication, secure whitelist checks, secure sharing, and account-based authorization are planned, not complete.
+The iOS app now generates real QR images, can scan/parse plain MemoryQR JSON from the camera or Photos images, and can create/unlock passphrase-encrypted MemoryQR envelopes. Passphrase encryption, local reader allowlists, and attachment references are independent options. Plain payloads can include local reader allowlist metadata and small attachment reference metadata; encrypted envelopes can carry those metadata around encrypted memory text. Any security language must be precise: passphrase encryption exists, local reader allowlists and attachment references are MVP metadata, unencrypted QR text remains directly readable, and authentication, secure whitelist checks, secure sharing, account-based authorization, and real media storage are planned, not complete.
 
 ## Next Good Tasks
 
 Recommended next implementation steps:
 
 1. Design secure account/key-based authorization to replace manually entered local reader IDs.
-2. Design secure attachment support for photos, audio, and video.
-3. Add encrypted attachment reference tests around payload size, invalid payloads, and attachment references.
+2. Design secure local encrypted bundle storage for photos, audio, and video.
+3. Add attachment import/export UX once the encrypted bundle storage boundary is designed.
 4. Review iOS encrypted create/scan UX on a real device.
 5. Improve README with screenshots once the iOS flow is visually reviewed.
 
@@ -144,6 +145,24 @@ Recommended next implementation steps:
 - Verified the icon dimensions and alpha channel with `sips -g pixelWidth -g pixelHeight -g hasAlpha`.
 - Still incomplete: login, secure whitelist authorization, account-based authorized decode, cloud storage, secure sharing, actual media attachment storage, and manual camera/icon review on a physical iPhone.
 - Best next task: manually review the icon on device home screen sizes, then continue with signed/key-based recipient authorization or encrypted attachment references.
+
+## 2026-05-14 Encrypted Attachment References Session Notes
+
+- Added `attachments` metadata in JavaScript and Swift for small local-first media references only: attachment id, `image`/`audio`/`video` type, byte size, SHA-256, `local-encrypted-bundle` storage kind, and encrypted bundle reference.
+- Plain `memoryqr.memory.v1` payloads now support optional local reader allowlist metadata and attachment references; encrypted envelopes still support authenticated authorization and attachment metadata around encrypted memory text.
+- Attachment references are normalized, size-limited, duplicate-id checked, reject unknown inline-media fields, and participate in AES-GCM authenticated metadata for new envelopes.
+- Added iOS Create UI for manually entering one attachment reference from a top-level option beside passphrase encryption and local reader allowlist.
+- Fixed Create option display state so passphrase fields are shown only by the passphrase encryption toggle; reader ID and attachment fields are controlled by their own toggles.
+- Fixed Create option layout order so each expanded field group appears immediately under its own toggle instead of after all three toggles.
+- Changed the Create contract so passphrase encryption, local reader allowlists, and attachment references are fully independent: plain MemoryQR payloads can now carry local reader allowlist metadata and attachment references without requiring passphrase encryption.
+- Updated Scan so plain allowlisted payloads ask for a matching local reader ID before displaying in-app, and plain payload attachment references are shown in scan results.
+- Added iOS Scan display for attachment references declared by encrypted envelopes before unlock.
+- Preserved decrypt compatibility for older encrypted envelopes that do not yet include `attachments`.
+- Added Node contract tests and Swift XCTest coverage for plain and encrypted attachment references, plain local reader allowlists, manual attachment draft conversion, invalid references, tamper rejection, independent Create option behavior, and Create option field ordering.
+- Verified `node --test test/*.test.js`.
+- Verified full XCTest by running `xcodebuild test -project iOS/MemoryQR/MemoryQR.xcodeproj -scheme MemoryQR -destination 'platform=iOS Simulator,id=3A176790-8911-4364-84C1-499EE46875A2' -derivedDataPath /private/tmp/MemoryQR-xcode` after confirming the local iOS 26.5 `iPhone 17 Pro Max` simulator ID with escalated CoreSimulator access.
+- Still incomplete: login, secure whitelist authorization, account-based authorized decode, cloud storage, secure sharing, actual media import/storage/export, and manual camera/icon review on a physical iPhone.
+- Best next task: design the local encrypted bundle storage format and lifecycle for referenced photos, audio, and video, or replace local reader IDs with signed/key-based recipient authorization.
 
 ## Session Handoff Rule
 
